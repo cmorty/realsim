@@ -6,8 +6,8 @@
 #include <stdio.h>
 
 #define MAX_NEIGHBORS 16
-#define MAX_PACKETS 10
 #define MAX_NODES 16
+#define MAX_PACKETS 10
 
 /* Struct for neighbor info */
 struct neighbor {
@@ -90,7 +90,7 @@ broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from)
 	n->lqi = (packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY) + n->lqi)/2;
 	n->recv_count++;
 	
-	/*  // Avoid align faults
+	/*
 	uint16_t tmp_seqno;
 	memcpy(&(tmp_seqno), &(m->seqno), sizeof(m->seqno));
 
@@ -164,7 +164,7 @@ recv(struct mesh_conn *c, const rimeaddr_t *from, uint8_t hops)
 	}
 	else {
 		/* Print received Information */
-		/* Packets from Node 1 -> Node 2 have a success ratio of x to be received by Node 2*/
+		/* Packets from Node 1 -> Node 2 have a success ratio of recv_count/seqno to be received by Node 2*/
 		printf("edge::%d.%d::%d.%d::%d::%d::%d::\n",
 			tmp_addr.u8[0],
 			tmp_addr.u8[1],

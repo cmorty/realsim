@@ -97,7 +97,7 @@ class Listener extends Thread {
 								  sim.removeMote(sim.getMote(0));
 							  }
 						}
-						
+					
 						// Fill internal mote Array
 						if(token.equals("node")){
 							while(t.hasMoreElements()){
@@ -184,7 +184,8 @@ class Listener extends Thread {
 								double y = (Math.random()*10000)% 15;
 								mote.getInterfaces().getPosition().setCoordinates(x, y, 0);
 								mote.getInterfaces().getMoteID().setMoteID(id);
-								if(sim.getMoteTypes().length == 0)sim.addMoteType(sky);
+								if(sim.getMotesCount() == 0)sim.addMoteType(sky);
+								mote.setType(sim.getMoteTypes()[0]);
 								sim.addMote(mote);
 								g.getPanel().addNode(id+"");
 								
@@ -243,7 +244,7 @@ class Listener extends Thread {
 							// Add new Edge
 							try {
 								double ratio = new Double(t.nextToken()) / 100.0;
-								if(ratio <= 0.2)continue lines;
+								if(ratio <= 0.1 || ratio > 1.0)continue lines;
 								int rssi = new Integer(t.nextToken());
 								int lqi = new Integer(t.nextToken());
 								DGRMDestinationRadio dr = new DGRMDestinationRadio(sim.getMoteWithID(id_dst).getInterfaces().getRadio());
@@ -256,7 +257,7 @@ class Listener extends Thread {
 								g.getPanel().addEdge(id_src+"",id_dst+"", ((100 * 90) - (int)((lqi * rssi) * ratio)) / 50);
 								v.resetViewport++;
 								
-								// Ignore those Exceptions
+							// Ignore those Exceptions
 							} catch(NumberFormatException e){
 								
 							} catch(NoSuchElementException e){
