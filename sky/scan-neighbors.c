@@ -35,7 +35,6 @@ struct node_address {
 /* Structs for connections */
 static struct broadcast_conn broadcast;
 static struct mesh_conn mesh;
-static struct collect_conn tc;
 
 /* Memory pool for list entries */
 MEMB(neighbors_memb, struct neighbor, MAX_NEIGHBORS);
@@ -91,11 +90,11 @@ broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from)
 	n->lqi = (packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY) + n->lqi)/2;
 	n->recv_count++;
 	
-	 // Avoid align faults
+	/*  // Avoid align faults
 	uint16_t tmp_seqno;
 	memcpy(&(tmp_seqno), &(m->seqno), sizeof(m->seqno));
 
-	/* Print out a message. 
+	Print out a message.
 	printf("broadcast message received from %d.%d with seqno %d, RSSI %u, LQI %u, ratio:(%d / %d) \n",
          from->u8[0], from->u8[1],
          tmp_seqno,
@@ -130,68 +129,70 @@ recv(struct mesh_conn *c, const rimeaddr_t *from, uint8_t hops)
 	uint8_t tmp_rssi; memcpy(&(tmp_rssi), &(msg->n.rssi), sizeof(msg->n.recv_count));
 	uint8_t tmp_lqi; memcpy(&(tmp_lqi), &(msg->n.lqi), sizeof(msg->n.lqi));
 
-	/* Print received Information */
-	/* Packets from Node 1 -> Node 2 have a success ratio of x to be received by Node 2*/
-	printf("edge::%d.%d::%d.%d::%d::%d::%d::\n",
-		tmp_addr.u8[0],
-		tmp_addr.u8[1],
-		tmp_own_addr.u8[0],
-		tmp_own_addr.u8[1],
-		(tmp_recv_count * 100) / tmp_seqno,
-		tmp_rssi,
-		tmp_lqi);
-}
+	/* Check if hello or edge msg */
+	if(tmp_seqno == 1){
+		struct node_address *node;
 
-static void
-collect_recv(const rimeaddr_t *from, uint8_t seqno, uint8_t hops)
-{
-	struct node_address *node;
-	
-	/* Check if node in list */
-	for(node = list_head(node_addresses); node != NULL; node = list_item_next(node)) {
-		if(rimeaddr_cmp(&node->node_addr, from)) {
-			break;
+		/* Check if node in list */
+		for(node = list_head(node_addresses); node != NULL; node = list_item_next(node)) {
+			if(rimeaddr_cmp(&node->node_addr, from)) {
+				break;
+			}
 		}
-	}
 
-	/* Add node to list and set ttl */
-	if(node == NULL) {	  
-		node = memb_alloc(&address_memb);
+		/* Add node to list and set ttl */
 		if(node == NULL) {
-		  return;
+			node = memb_alloc(&address_memb);
+			if(node == NULL) {
+			  return;
+			}
+			rimeaddr_copy(&node->node_addr,from);
+			node->ttl = 10;
+			list_add(node_addresses, node);
+		} else {
+			node->ttl = 10;
 		}
-		rimeaddr_copy(&node->node_addr,from);
-		node->ttl = 30;
-		list_add(node_addresses, node);
-	} else {
-		node->ttl = 30;
-	}
-	
-	/* Print nodes and/or remove dead nodes */
-	for(node = list_head(node_addresses); node != NULL; node = list_item_next(node)) {
-		if(node->ttl == 0){
-			list_remove(node_addresses, node);
+
+		/* Print nodes and/or remove dead nodes */
+		for(node = list_head(node_addresses); node != NULL; node = list_item_next(node)) {
+			if(node->ttl == 0){
+				list_remove(node_addresses, node);
+			}
+			printf("node::%d.%d::", node->node_addr.u8[0], node->node_addr.u8[1]);
 		}
-		printf("node::%d.%d::", node->node_addr.u8[0], node->node_addr.u8[1]);
+		printf("\n");
 	}
-	printf("\n");
+	else {
+		/* Print received Information */
+		/* Packets from Node 1 -> Node 2 have a success ratio of x to be received by Node 2*/
+		printf("edge::%d.%d::%d.%d::%d::%d::%d::\n",
+			tmp_addr.u8[0],
+			tmp_addr.u8[1],
+			tmp_own_addr.u8[0],
+			tmp_own_addr.u8[1],
+			(tmp_recv_count * 100) / tmp_seqno,
+			tmp_rssi,
+			tmp_lqi);
+	}
 }
 
+/*---------------------------------------------------------------------------*/
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
 static const struct mesh_callbacks callbacks = {recv, sent, timedout};
-static const struct collect_callbacks collect_callbacks = {collect_recv};
 /*---------------------------------------------------------------------------*/
 
 PROCESS_THREAD(scanning_process, ev, data)
 {
 	static struct etimer et;
-	static rimeaddr_t oldparent;
 	static uint16_t seqno = 1;
+	static uint16_t isSink = 0;
+	static rimeaddr_t sink_addr;
 	struct broadcast_message msg;
-	const rimeaddr_t *parent;
+	struct broadcast_message hello;
 	struct node_address *node;
 
-	PROCESS_EXITHANDLER(broadcast_close(&broadcast); mesh_close(&mesh); collect_close(&tc);)
+
+	PROCESS_EXITHANDLER(broadcast_close(&broadcast); mesh_close(&mesh);)
 
 	PROCESS_BEGIN();
 	
@@ -201,41 +202,39 @@ PROCESS_THREAD(scanning_process, ev, data)
 	
 	broadcast_open(&broadcast, 129, &broadcast_call);
 	
-	etimer_set(&et, CLOCK_SECOND * 2);
-	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-	
-	collect_open(&tc, 135, COLLECT_ROUTER, &collect_callbacks);
-	
-	/* Set Sink */
+	/* If Sink: Add addr to Nodes */
 	if(rimeaddr_node_addr.u8[0] == 80) {
+		struct node_address *sink;
+		sink = memb_alloc(&address_memb);
+		rimeaddr_copy(&sink->node_addr,&rimeaddr_node_addr);
+		sink->ttl = -1;
+		list_add(node_addresses, sink);
+		isSink = 1;
 		printf("I am sink\n");
-		collect_set_sink(&tc, 1);
 	}
-	
+
 	etimer_set(&et, CLOCK_SECOND * 2);
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+
+	mesh_open(&mesh, 120, &callbacks);
 	
-	mesh_open(&mesh, 120, &callbacks);	
-	
+	// Set sink adress
+	sink_addr.u8[0] = 80;
+	sink_addr.u8[1] = 135;
+
 	while(1) {
 		
-	/* Send collect message every 2 - 3 seconds */
+	/* Send hello message every 2 - 3 seconds */
 	etimer_set(&et, CLOCK_SECOND * 2 + random_rand() % (CLOCK_SECOND * 1));
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-	
-	collect_send(&tc, 5);
-	
-	parent = collect_parent(&tc);
-	if(!rimeaddr_cmp(parent, &oldparent)) {
-		if(!rimeaddr_cmp(&oldparent, &rimeaddr_null)) {
-		  printf("#L %d 0\n", oldparent.u8[0]);
-		}
-		if(!rimeaddr_cmp(parent, &rimeaddr_null)) {
-		  printf("#L %d 1\n", parent->u8[0]);
-		}
-		rimeaddr_copy(&oldparent, parent);
+
+	if(isSink == 0){
+		uint16_t dummy = 1;
+		memcpy(&(hello.seqno), &(dummy), sizeof(seqno));
+		rimeaddr_copy(&hello.own_addr, &rimeaddr_node_addr);
+		packetbuf_copyfrom(&hello, sizeof(hello));
+		mesh_send(&mesh, &sink_addr);
 	}
-	
 	/* Remove node or decrease TTL*/
 	for(node = list_head(node_addresses); node != NULL; node = list_item_next(node)) {
 		if(node->ttl == 0){
@@ -256,14 +255,9 @@ PROCESS_THREAD(scanning_process, ev, data)
 	
     /* Send data to sink */
     if(seqno >= MAX_PACKETS){
-		static rimeaddr_t sink_addr;
 		static struct neighbor *n;
 		struct broadcast_message sink_message;
 
-		// Set sink adress
-		sink_addr.u8[0] = 80;
-		sink_addr.u8[1] = 135;
-		
 		/* If Sink, print out edge instead of sending (to Sink)*/
 		if(rimeaddr_node_addr.u8[0] == 80) {
 			for(n = list_head(neighbors_list); n != NULL; n = list_item_next(n)) {

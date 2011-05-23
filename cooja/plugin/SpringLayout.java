@@ -52,7 +52,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
     	return addNode(lbl);
     }
     
-    private Node addNode(String lbl) {
+    public Node addNode(String lbl) {
 		Node n = new Node();
 		n.x = 10 + 380*Math.random();
 		n.y = 10 + 380*Math.random();
@@ -116,6 +116,12 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 				if(e.ttl <= 0){
 					edges.remove(e);
 					i--;
+				}
+				if(edges.isEmpty()){
+					nodes.clear();
+					while(sim.getMotesCount() > 0){
+						sim.removeMote(sim.getMote(0));
+					}
 				}
 			}
 		    try {

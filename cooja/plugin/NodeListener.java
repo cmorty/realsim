@@ -186,6 +186,7 @@ class Listener extends Thread {
 								mote.getInterfaces().getMoteID().setMoteID(id);
 								if(sim.getMoteTypes().length == 0)sim.addMoteType(sky);
 								sim.addMote(mote);
+								g.getPanel().addNode(id+"");
 								
 								if(isRunning){
 									sim.startSimulation();
@@ -242,6 +243,7 @@ class Listener extends Thread {
 							// Add new Edge
 							try {
 								double ratio = new Double(t.nextToken()) / 100.0;
+								if(ratio <= 0.2)continue lines;
 								int rssi = new Integer(t.nextToken());
 								int lqi = new Integer(t.nextToken());
 								DGRMDestinationRadio dr = new DGRMDestinationRadio(sim.getMoteWithID(id_dst).getInterfaces().getRadio());
@@ -251,7 +253,7 @@ class Listener extends Thread {
 								radioMedium.addEdge(newEdge);
 								edges.add(edge);
 								radioMedium.requestEdgeAnalysis();
-								g.getPanel().addEdge(id_src+"",id_dst+"", 300 - (lqi + rssi *2));
+								g.getPanel().addEdge(id_src+"",id_dst+"", ((100 * 90) - (int)((lqi * rssi) * ratio)) / 50);
 								v.resetViewport++;
 								
 								// Ignore those Exceptions
