@@ -49,8 +49,9 @@ MEMB(address_memb, struct node_address, MAX_NODES);
 LIST(node_addresses);
 
 /*---------------------------------------------------------------------------*/
-PROCESS(scanning_process, "Scanning process");
-AUTOSTART_PROCESSES(&scanning_process);
+PROCESS(poll_process, "Poll process");
+PROCESS(scan_process, "Scan process");
+AUTOSTART_PROCESSES(&poll_process,&scan_process);
 /*---------------------------------------------------------------------------*/
 
 static void
@@ -181,26 +182,20 @@ static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
 static const struct mesh_callbacks callbacks = {recv, sent, timedout};
 /*---------------------------------------------------------------------------*/
 
-PROCESS_THREAD(scanning_process, ev, data)
+PROCESS_THREAD(poll_process, ev, data)
 {
 	static struct etimer et;
-	static uint16_t seqno = 1;
 	static uint16_t isSink = 0;
 	static rimeaddr_t sink_addr;
-	struct broadcast_message msg;
 	struct broadcast_message hello;
 	struct node_address *node;
 
-
-	PROCESS_EXITHANDLER(broadcast_close(&broadcast); mesh_close(&mesh);)
-
+	PROCESS_EXITHANDLER(mesh_close(&mesh);)
 	PROCESS_BEGIN();
 	
 	/* Init */
 	etimer_set(&et, CLOCK_SECOND * 2);
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-	
-	broadcast_open(&broadcast, 129, &broadcast_call);
 	
 	/* If Sink: Add addr to Nodes */
 	if(rimeaddr_node_addr.u8[0] == 80) {
@@ -224,13 +219,13 @@ PROCESS_THREAD(scanning_process, ev, data)
 
 	while(1) {
 		
-	/* Send hello message every 2 - 3 seconds */
-	etimer_set(&et, CLOCK_SECOND * 2 + random_rand() % (CLOCK_SECOND * 1));
+	/* Send hello message every 2 */
+	etimer_set(&et, CLOCK_SECOND * 2);
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 	if(isSink == 0){
 		uint16_t dummy = 1;
-		memcpy(&(hello.seqno), &(dummy), sizeof(seqno));
+		memcpy(&(hello.seqno), &(dummy), sizeof(dummy));
 		rimeaddr_copy(&hello.own_addr, &rimeaddr_node_addr);
 		packetbuf_copyfrom(&hello, sizeof(hello));
 		mesh_send(&mesh, &sink_addr);
@@ -243,9 +238,39 @@ PROCESS_THREAD(scanning_process, ev, data)
 			node->ttl--;
 		}
 	}
+  }
+  PROCESS_END();
+}
 
-	/* Send a broadcast every 1 - 2 seconds */
-	etimer_set(&et, CLOCK_SECOND * 1 + random_rand() % (CLOCK_SECOND * 1));
+PROCESS_THREAD(scan_process, ev, data)
+{
+	static struct etimer et;
+	static uint16_t seqno = 1;
+	static rimeaddr_t sink_addr;
+	struct broadcast_message msg;
+
+	PROCESS_EXITHANDLER(broadcast_close(&broadcast);mesh_close(&mesh);)
+
+	PROCESS_BEGIN();
+	
+	/* Init */
+	etimer_set(&et, CLOCK_SECOND * 2);
+	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+	
+	broadcast_open(&broadcast, 129, &broadcast_call);
+	
+	etimer_set(&et, CLOCK_SECOND * 2);
+	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+	
+	mesh_open(&mesh, 120, &callbacks);
+	
+	// Set sink adress
+	sink_addr.u8[0] = 80;
+	sink_addr.u8[1] = 135;
+
+	while(1) {
+	
+	etimer_set(&et, CLOCK_SECOND * 1 + random_rand() % (CLOCK_SECOND * 3));
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 	/* Prepare message and send broadcast */
@@ -296,3 +321,4 @@ PROCESS_THREAD(scanning_process, ev, data)
   }
   PROCESS_END();
 }
+

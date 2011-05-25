@@ -297,7 +297,7 @@ int main(int argc, char **argv)
 		if(send(sock,&buf[i],1,0) < 0)
 		{
 			perror("writing on stream socket");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		fflush(NULL);
 		fflush(stdout);
@@ -305,4 +305,5 @@ int main(int argc, char **argv)
     }
   }
   close(sock);
+  return;
 }

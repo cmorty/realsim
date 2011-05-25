@@ -68,21 +68,29 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
     
     public void addEdge(String from, String to, int len) {
 		Edge e = new Edge();
+		Edge oldedge = null;
 		for(int i = 0; i < edges.size(); i++){
 			if(edges.get(i).from.lbl.equals(from) && edges.get(i).to.lbl.equals(to)){
+				oldedge = edges.get(i);
 				edges.remove(i);
 				i--;
 			}
 		}
 		for(int i = 0; i < edges.size(); i++){
 			if(edges.get(i).from.lbl.equals(to) && edges.get(i).to.lbl.equals(from)){
+				oldedge = edges.get(i);
 				edges.remove(i);
 				i--;
 			}
 		}
 		e.from = findNode(from);
 		e.to = findNode(to);
-		e.len = len;
+		if(oldedge != null) {
+			e.len = Math.round((len + oldedge.len)/2);
+		}
+		else {
+			e.len = len;
+		}
 		e.ttl = 5000;
 		edges.add(e);;
     }
