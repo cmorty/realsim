@@ -119,7 +119,7 @@ class Listener extends Thread {
 							for(Mote sim_mote : sim.getMotes()){
 								if(!motes.containsKey(sim_mote.getID())){
 									sim.removeMote(sim_mote);
-									g.getPanel().removeNode("" + sim_mote.getID());
+									g.getPanel().removeNode(String.valueOf(sim_mote.getID()));
 									int rem = 0;
 									for(MyEdge e: edges){
 										if(e.getSrc() == sim_mote.getID() || e.getDst() == sim_mote.getID()){
@@ -187,7 +187,7 @@ class Listener extends Thread {
 								if(sim.getMotesCount() == 0)sim.addMoteType(sky);
 								mote.setType(sim.getMoteTypes()[0]);
 								sim.addMote(mote);
-								g.getPanel().addNode(id+"");
+								g.getPanel().addNode(String.valueOf(id));
 								
 								if(isRunning){
 									sim.startSimulation();
@@ -203,23 +203,17 @@ class Listener extends Thread {
 						
 						// Add Edge to DGRMConfigurator
 						if(token.equals("edge")){
+						try {
 							String s1 = t.nextToken();
 							String s2 = t.nextToken();
 							int id_src;
 							int id_dst;
 							MyEdge edge;
 							boolean e_exists = false;
-							try {
-								id_src = new Integer(s1.substring(0, s1.indexOf('.')));
-								id_dst = new Integer(s2.substring(0, s2.indexOf('.')));
-								edge = new MyEdge(id_src, id_dst);
-								
-							} catch (NumberFormatException e){
-								continue lines;
-							} catch (StringIndexOutOfBoundsException e){
-								continue lines;
-							}
-							
+							id_src = new Integer(s1.substring(0, s1.indexOf('.')));
+							id_dst = new Integer(s2.substring(0, s2.indexOf('.')));
+							edge = new MyEdge(id_src, id_dst);
+
 							if(!sim.getMotesID().contains(id_src) || !sim.getMotesID().contains(id_dst)){
 								continue lines;
 							}
@@ -242,26 +236,30 @@ class Listener extends Thread {
 							}
 							
 							// Add new Edge
-							try {
-								double ratio = new Double(t.nextToken()) / 100.0;
-								if(ratio <= 0.1 || ratio > 1.0)continue lines;
-								int rssi = new Integer(t.nextToken());
-								int lqi = new Integer(t.nextToken());
-								DGRMDestinationRadio dr = new DGRMDestinationRadio(sim.getMoteWithID(id_dst).getInterfaces().getRadio());
-								dr.ratio = ratio;
-								dr.signal = rssi - 100;
-								DirectedGraphMedium.Edge newEdge = new Edge( sim.getMoteWithID(id_src).getInterfaces().getRadio(),dr);
-								radioMedium.addEdge(newEdge);
-								edges.add(edge);
-								radioMedium.requestEdgeAnalysis();
-								g.getPanel().addEdge(id_src+"",id_dst+"", ((100 * 90) - (int)((lqi * rssi) * ratio)) / 50);
-								v.resetViewport++;
-								
+							double ratio = new Double(t.nextToken()) / 100.0;
+							if(ratio <= 0.1 || ratio > 1.0)continue lines;
+							int rssi = new Integer(t.nextToken());
+							int lqi = new Integer(t.nextToken());
+							DGRMDestinationRadio dr = new DGRMDestinationRadio(sim.getMoteWithID(id_dst).getInterfaces().getRadio());
+							dr.ratio = ratio;
+							dr.signal = rssi - 100;
+							dr.lqi = lqi;
+							DirectedGraphMedium.Edge newEdge = new Edge( sim.getMoteWithID(id_src).getInterfaces().getRadio(),dr);
+							radioMedium.addEdge(newEdge);
+							edges.add(edge);
+							radioMedium.requestEdgeAnalysis();
+							g.getPanel().addEdge(String.valueOf(id_src),String.valueOf(id_dst), ((100 * 90) - (int)((lqi * rssi) * ratio)) / 50);
+							v.resetViewport++;
+							
 							// Ignore those Exceptions
 							} catch(NumberFormatException e){
-								
-							} catch(NoSuchElementException e){
-								
+								continue lines;
+							} 
+							catch(NoSuchElementException e){
+								continue lines;	
+							}
+							catch (StringIndexOutOfBoundsException e){
+								continue lines;
 							}
 						}
 					}

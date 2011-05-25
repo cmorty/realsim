@@ -79,7 +79,7 @@ broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from)
 		rimeaddr_copy(&n->addr, from);
 		n->recv_count = 0;
 		n->rssi = 90;
-		n->lqi = 100;
+		n->lqi = 107;
 
 		/* Place the neighbor on the neighbor list. */
 		list_add(neighbors_list, n);
@@ -164,7 +164,7 @@ recv(struct mesh_conn *c, const rimeaddr_t *from, uint8_t hops)
 	}
 	else {
 		/* Print received Information */
-		/* Packets from Node 1 -> Node 2 have a success ratio of recv_count/seqno to be received by Node 2*/
+		/* Packets from Node 1 -> Node 2 have a success ratio of recv_count/seqno (to be received by Node 2)*/
 		printf("edge::%d.%d::%d.%d::%d::%d::%d::\n",
 			tmp_addr.u8[0],
 			tmp_addr.u8[1],

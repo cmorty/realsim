@@ -35,7 +35,6 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
     ArrayList<Edge> edges = new ArrayList<Edge>();
     Thread relaxer;
     Simulation sim;
-    
 
     public GraphPanel(SpringLayout graph, Simulation sim) {
     	this.graph = graph;
@@ -57,6 +56,12 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		n.x = 10 + 380*Math.random();
 		n.y = 10 + 380*Math.random();
 		n.lbl = lbl;
+		if(lbl.equals("80")){
+			n.fixed = true;
+			n.x = graph.getWidth()/2;
+			n.y = graph.getHeight()/2;
+		}
+		
 		nodes.add(n);
 		return n;
 	}
@@ -64,13 +69,13 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
     public void addEdge(String from, String to, int len) {
 		Edge e = new Edge();
 		for(int i = 0; i < edges.size(); i++){
-			if(edges.get(i).from.lbl.equals(from) && edges.get(i).from.lbl.equals(to)){
+			if(edges.get(i).from.lbl.equals(from) && edges.get(i).to.lbl.equals(to)){
 				edges.remove(i);
 				i--;
 			}
 		}
 		for(int i = 0; i < edges.size(); i++){
-			if(edges.get(i).from.lbl.equals(to) && edges.get(i).from.lbl.equals(from)){
+			if(edges.get(i).from.lbl.equals(to) && edges.get(i).to.lbl.equals(from)){
 				edges.remove(i);
 				i--;
 			}
@@ -78,13 +83,13 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		e.from = findNode(from);
 		e.to = findNode(to);
 		e.len = len;
-		e.ttl = 600;
+		e.ttl = 5000;
 		edges.add(e);;
     }
     
     synchronized void removeNode(String lbl){
     	for(int i = 0; i < nodes.size(); i++){
-    		if(lbl.equals(nodes.get(i).lbl +"")){
+    		if(lbl.equals(String.valueOf(nodes.get(i).lbl))){
     			nodes.remove(i);
     			i--;
     		}
@@ -104,7 +109,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		    Visualizer v = (Visualizer)(sim.getGUI().getPlugin("Visualizer"));
 			for(Node n: nodes){
 				if(n != null && sim.getMoteWithID(new Integer(n.lbl)) != null){
-					sim.getMoteWithID(new Integer(n.lbl)).getInterfaces().getPosition().setCoordinates(n.x/30, n.y/30, 0);
+					sim.getMoteWithID(new Integer(n.lbl)).getInterfaces().getPosition().setCoordinates(n.x/50, n.y/50, 0);
 					if(v.resetViewport > 0){
 						v.resetViewport();
 					}
@@ -125,7 +130,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 				}
 			}
 		    try {
-		    	Thread.sleep(100);
+		    	Thread.sleep(10);
 		    } catch (InterruptedException e) {
 		    	break;
 		    }
@@ -151,7 +156,6 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 
 		for (int i = 0 ; i < nodes.size() ; i++) {
 		    Node n1 = nodes.get(i);
-		    //System.err.println(n1.x + " " + n1.y + " " + n1.lbl);
 		    double dx = 0;
 		    double dy = 0;
 	
@@ -183,8 +187,8 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		for (int i = 0 ; i < nodes.size() ; i++) {
 		   Node n = nodes.get(i);
 		    if (!n.fixed) {
-			n.x += Math.max(-5, Math.min(5, n.dx));
-			n.y += Math.max(-5, Math.min(5, n.dy));
+	    		n.x += Math.max(-1, Math.min(1, n.dx));
+	    		n.y += Math.max(-1, Math.min(1, n.dy));
 	        }
 	        if (n.x < 0) {
 	            n.x = 0;
@@ -252,7 +256,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 	    int len = (int)Math.abs(Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) - e.len);
 	    offgraphics.setColor((len < 10) ? arcColor1 : (len < 20 ? arcColor2 : arcColor3)) ;
 	    offgraphics.drawLine(x1, y1, x2, y2);
-		offgraphics.drawString(e.len + "",  x1 + (x2-x1)/2, y1 + (y2-y1)/2);
+		offgraphics.drawString(String.valueOf(e.len),  x1 + (x2-x1)/2, y1 + (y2-y1)/2);
 		offgraphics.setColor(edgeColor);
 		repaint();
 	}
