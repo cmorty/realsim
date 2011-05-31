@@ -4,6 +4,7 @@ import java.util.*;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.JFrame;
+import javax.swing.JPanel;
 import javax.swing.JToggleButton;
 
 import se.sics.cooja.ClassDescription;
@@ -24,12 +25,23 @@ class Node {
 class Edge {
     Node from;
     Node to;
-    double len;
+    public double len(){
+    	return GraphPanel.view == 0 ? rssi : lqi;
+    }
+    public void setRSSI(double rssi){
+    	this.rssi = rssi;
+    }
+    public void setLQI(double lqi){
+    	this.lqi = lqi;
+    }
+    double rssi;
+    double lqi;
     int ttl;
 }
 
 class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionListener {
 	private static final long serialVersionUID = 1L;
+	public static int view = 0;
 	SpringLayout graph;
     ArrayList<Node> nodes = new ArrayList<Node>();
     ArrayList<Edge> edges = new ArrayList<Edge>();
@@ -66,9 +78,10 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		return n;
 	}
     
-    public void addEdge(String from, String to, int len) {
+    public void addEdge(String from, String to, int rssi, int lqi) {
 		Edge e = new Edge();
 		Edge oldedge = null;
+		
 		for(int i = 0; i < edges.size(); i++){
 			if(edges.get(i).from.lbl.equals(from) && edges.get(i).to.lbl.equals(to)){
 				oldedge = edges.get(i);
@@ -86,12 +99,14 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		e.from = findNode(from);
 		e.to = findNode(to);
 		if(oldedge != null) {
-			e.len = Math.round((len + oldedge.len)/2);
+			e.setRSSI(Math.round((rssi + oldedge.rssi)/2));
+			e.setLQI(Math.round(lqi + oldedge.lqi)/2);
 		}
 		else {
-			e.len = len;
+			e.setRSSI(rssi);
+			e.setLQI(lqi);
 		}
-		e.ttl = 5000;
+		e.ttl = 50000;
 		edges.add(e);;
     }
     
@@ -138,7 +153,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 				}
 			}
 		    try {
-		    	Thread.sleep(10);
+		    	Thread.sleep(100);
 		    } catch (InterruptedException e) {
 		    	break;
 		    }
@@ -152,7 +167,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		    double vy = nodes.get(nodes.indexOf(e.to)).y - nodes.get(nodes.indexOf(e.from)).y;
 		    double len = Math.sqrt(vx * vx + vy * vy);
 	            len = (len == 0) ? .0001 : len;
-		    double f = (edges.get(i).len - len) / (len * 3);
+		    double f = (edges.get(i).len() - len) / (len * 3);
 		    double dx = f * vx;
 		    double dy = f * vy;
 	
@@ -195,8 +210,12 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		for (int i = 0 ; i < nodes.size() ; i++) {
 		   Node n = nodes.get(i);
 		    if (!n.fixed) {
-	    		n.x += Math.max(-1, Math.min(1, n.dx));
-	    		n.y += Math.max(-1, Math.min(1, n.dy));
+		    	if(Math.abs(Math.max(-10, Math.min(10, n.dx))) > 0.5){
+		    		n.x += Math.max(-10, Math.min(10, n.dx));
+		    	}
+		    	if(Math.abs(Math.max(-10, Math.min(10, n.dy))) > 0.5){
+		    		n.y += Math.max(-10, Math.min(10, n.dy));
+		    	}
 	        }
 	        if (n.x < 0) {
 	            n.x = 0;
@@ -261,10 +280,10 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 	    int y1 = (int)nodes.get(nodes.indexOf(e.from)).y;
 	    int x2 = (int)nodes.get(nodes.indexOf(e.to)).x;
 	    int y2 = (int)nodes.get(nodes.indexOf(e.to)).y;
-	    int len = (int)Math.abs(Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) - e.len);
+	    int len = (int)Math.abs(Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) - e.len());
 	    offgraphics.setColor((len < 10) ? arcColor1 : (len < 20 ? arcColor2 : arcColor3)) ;
 	    offgraphics.drawLine(x1, y1, x2, y2);
-		offgraphics.drawString(String.valueOf(e.len),  x1 + (x2-x1)/2, y1 + (y2-y1)/2);
+		offgraphics.drawString(String.valueOf(e.len()),  x1 + (x2-x1)/2, y1 + (y2-y1)/2);
 		offgraphics.setColor(edgeColor);
 		repaint();
 	}
@@ -357,11 +376,14 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 public class SpringLayout extends VisPlugin implements ActionListener, ItemListener {
 	private static final long serialVersionUID = 1L;
 	GraphPanel panel;
-    Panel controlPanel;
+    JPanel controlPanel;
     Simulation sim;
 
     Button clear = new Button("Clear");
     Button shake = new Button("Shake");
+    Button rssi = new Button("RSSI-View");
+    Button lqi = new Button("LQI-View");
+    
     JToggleButton pause = new JToggleButton("Pause");
 	
 	public SpringLayout(Simulation sim, GUI gui){
@@ -374,15 +396,17 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
     public void init() {
 		panel = new GraphPanel(this,this.sim);
 		add("Center", panel);
-		controlPanel = new Panel();
+		controlPanel = new JPanel();
 		add("South", controlPanel);
 		controlPanel.add(clear); clear.addActionListener(this);
 		controlPanel.add(shake); shake.addActionListener(this);
+		controlPanel.add(rssi); rssi.addActionListener(this);
+		controlPanel.add(lqi); lqi.addActionListener(this);
 		controlPanel.add(pause); pause.addActionListener(this);
 		
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setLocation(510,0);
-		this.setSize(320, 320);
+		this.setSize(520, 320);
 		this.setBackground(Color.WHITE);
     }
 
@@ -425,6 +449,12 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 				panel.stop();
 				repaint();
 			}
+		}
+		if(src == rssi){
+			GraphPanel.view = 0;
+		}
+		if(src == lqi){
+			GraphPanel.view = 1;
 		}
     }
     

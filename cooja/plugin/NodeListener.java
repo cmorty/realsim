@@ -102,7 +102,7 @@ class Listener extends Thread {
 						if(token.equals("node")){
 							while(t.hasMoreElements()){
 								String s = t.nextToken();
-								if(s.length() > 4 && !s.equals("node")){
+								if(s.length() > 2 && !s.equals("node")){
 									try {
 										Integer id1 = new Integer(s.substring(0, s.indexOf('.')));
 										Integer id2 = new Integer(s.substring(s.indexOf('.')+1,s.length()));
@@ -248,7 +248,7 @@ class Listener extends Thread {
 							radioMedium.addEdge(newEdge);
 							edges.add(edge);
 							radioMedium.requestEdgeAnalysis();
-							g.getPanel().addEdge(String.valueOf(id_src),String.valueOf(id_dst), ((100 * 90) - (int)((lqi * rssi) * ratio)) / 50);
+							g.getPanel().addEdge(String.valueOf(id_src),String.valueOf(id_dst),(int)Math.pow(90-rssi, 2) / 25, (int)Math.pow(110-lqi, 2));
 							v.resetViewport++;
 							
 							// Ignore those Exceptions

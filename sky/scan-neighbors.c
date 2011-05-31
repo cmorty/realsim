@@ -4,6 +4,7 @@
 #include "lib/random.h"
 #include "net/rime.h"
 #include <stdio.h>
+#include "dev/leds.h"
 
 #define MAX_NEIGHBORS 16
 #define MAX_NODES 16
@@ -59,6 +60,8 @@ broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from)
 {
 	struct neighbor *n;
 	struct broadcast_message *m;
+	
+	leds_on(LEDS_BLUE);
 
 	m = packetbuf_dataptr();
 
@@ -91,6 +94,8 @@ broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from)
 	n->lqi = (packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY) + n->lqi)/2;
 	n->recv_count++;
 	
+	leds_off(LEDS_BLUE);
+	
 	/*
 	uint16_t tmp_seqno;
 	memcpy(&(tmp_seqno), &(m->seqno), sizeof(m->seqno));
@@ -109,11 +114,13 @@ static void
 sent(struct mesh_conn *c)
 {
 	printf("packet sent %d.%d \n", c->queued_data_dest.u8[0],c->queued_data_dest.u8[1]);
+	leds_off(LEDS_RED);
 }
 static void
 timedout(struct mesh_conn *c)
 {
 	printf("packet timed out\n");
+	leds_off(LEDS_RED);
 }
 static void
 recv(struct mesh_conn *c, const rimeaddr_t *from, uint8_t hops)
@@ -148,10 +155,10 @@ recv(struct mesh_conn *c, const rimeaddr_t *from, uint8_t hops)
 			  return;
 			}
 			rimeaddr_copy(&node->node_addr,from);
-			node->ttl = 10;
+			node->ttl = 90;
 			list_add(node_addresses, node);
 		} else {
-			node->ttl = 10;
+			node->ttl = 90;
 		}
 
 		/* Print nodes and/or remove dead nodes */
@@ -219,8 +226,8 @@ PROCESS_THREAD(poll_process, ev, data)
 
 	while(1) {
 		
-	/* Send hello message every 2 */
-	etimer_set(&et, CLOCK_SECOND * 2);
+	/* Send hello message every 4 */
+	etimer_set(&et, CLOCK_SECOND * 5);
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 	if(isSink == 0){
@@ -229,6 +236,13 @@ PROCESS_THREAD(poll_process, ev, data)
 		rimeaddr_copy(&hello.own_addr, &rimeaddr_node_addr);
 		packetbuf_copyfrom(&hello, sizeof(hello));
 		mesh_send(&mesh, &sink_addr);
+		leds_on(LEDS_RED);
+		if(route_lookup(&sink_addr)){
+			leds_on(LEDS_GREEN);
+		}
+		else {
+			leds_off(LEDS_GREEN);
+		}
 	}
 	/* Remove node or decrease TTL*/
 	for(node = list_head(node_addresses); node != NULL; node = list_item_next(node)) {
@@ -270,7 +284,7 @@ PROCESS_THREAD(scan_process, ev, data)
 
 	while(1) {
 	
-	etimer_set(&et, CLOCK_SECOND * 1 + random_rand() % (CLOCK_SECOND * 3));
+	etimer_set(&et, CLOCK_SECOND * 3 + random_rand() % (CLOCK_SECOND * 3));
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 	/* Prepare message and send broadcast */
