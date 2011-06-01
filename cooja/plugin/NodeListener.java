@@ -239,7 +239,10 @@ class Listener extends Thread {
 							double ratio = new Double(t.nextToken()) / 100.0;
 							int rssi = new Integer(t.nextToken());
 							int lqi = new Integer(t.nextToken());
-							if(ratio <= 0.1 || ratio > 1.0 || rssi > 90 || rssi <= 0 || lqi > 110 || lqi <= 0)continue lines;
+							if(ratio <= 0.1 || ratio > 1.0 || rssi > 90 || rssi <= 0 || lqi > 110 || lqi <= 0){
+								g.getPanel().removeEdge(edge);
+								continue lines;
+							}
 							DGRMDestinationRadio dr = new DGRMDestinationRadio(sim.getMoteWithID(id_dst).getInterfaces().getRadio());
 							dr.ratio = ratio;
 							dr.signal = rssi - 100;
@@ -273,7 +276,7 @@ class Listener extends Thread {
 	}
 	
 	// Help class
-	private class MyEdge {
+	public class MyEdge {
 		
 		private int src;
 		private int dst;

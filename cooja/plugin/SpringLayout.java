@@ -12,6 +12,7 @@ import se.sics.cooja.GUI;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.VisPlugin;
+import se.sics.cooja.plugins.Listener.MyEdge;
 
 class Node {
     double x;
@@ -26,7 +27,7 @@ class Edge {
     Node from;
     Node to;
     public double len(){
-    	return GraphPanel.view == 0 ? rssi : lqi;
+    	return GraphPanel.view ? rssi : lqi;
     }
     public void setRSSI(double rssi){
     	this.rssi = rssi;
@@ -41,7 +42,7 @@ class Edge {
 
 class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionListener {
 	private static final long serialVersionUID = 1L;
-	public static int view = 0;
+	public static boolean view = true;
 	SpringLayout graph;
     ArrayList<Node> nodes = new ArrayList<Node>();
     ArrayList<Edge> edges = new ArrayList<Edge>();
@@ -77,6 +78,15 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		nodes.add(n);
 		return n;
 	}
+    
+    public void removeEdge(MyEdge e){
+    	for(int i = 0; i < edges.size(); i++){
+			if(edges.get(i).from.lbl.equals(e.getSrc()) && edges.get(i).to.lbl.equals(e.getDst())){
+				edges.remove(i);
+				i--;
+			}
+		}
+    }
     
     public void addEdge(String from, String to, int rssi, int lqi) {
 		Edge e = new Edge();
@@ -451,10 +461,10 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 			}
 		}
 		if(src == rssi){
-			GraphPanel.view = 0;
+			GraphPanel.view = true;
 		}
 		if(src == lqi){
-			GraphPanel.view = 1;
+			GraphPanel.view = false;
 		}
     }
     
