@@ -237,9 +237,9 @@ class Listener extends Thread {
 							
 							// Add new Edge
 							double ratio = new Double(t.nextToken()) / 100.0;
-							if(ratio <= 0.1 || ratio > 1.0)continue lines;
 							int rssi = new Integer(t.nextToken());
 							int lqi = new Integer(t.nextToken());
+							if(ratio <= 0.1 || ratio > 1.0 || rssi > 90 || rssi <= 0 || lqi > 110 || lqi <= 0)continue lines;
 							DGRMDestinationRadio dr = new DGRMDestinationRadio(sim.getMoteWithID(id_dst).getInterfaces().getRadio());
 							dr.ratio = ratio;
 							dr.signal = rssi - 100;
@@ -248,7 +248,7 @@ class Listener extends Thread {
 							radioMedium.addEdge(newEdge);
 							edges.add(edge);
 							radioMedium.requestEdgeAnalysis();
-							g.getPanel().addEdge(String.valueOf(id_src),String.valueOf(id_dst),(int)Math.pow(90-rssi, 2) / 25, (int)Math.pow(110-lqi, 2));
+							g.getPanel().addEdge(String.valueOf(id_src),String.valueOf(id_dst),(int)Math.pow(90-rssi, 2) / 25, (int)((Math.pow(110-lqi, 2))+ (100*ratio)));
 							v.resetViewport++;
 							
 							// Ignore those Exceptions

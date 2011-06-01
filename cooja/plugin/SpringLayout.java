@@ -106,7 +106,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 			e.setRSSI(rssi);
 			e.setLQI(lqi);
 		}
-		e.ttl = 50000;
+		e.ttl = 10000;
 		edges.add(e);;
     }
     

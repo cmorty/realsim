@@ -95,19 +95,6 @@ broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from)
 	n->recv_count++;
 	
 	leds_off(LEDS_BLUE);
-	
-	/*
-	uint16_t tmp_seqno;
-	memcpy(&(tmp_seqno), &(m->seqno), sizeof(m->seqno));
-
-	Print out a message.
-	printf("broadcast message received from %d.%d with seqno %d, RSSI %u, LQI %u, ratio:(%d / %d) \n",
-         from->u8[0], from->u8[1],
-         tmp_seqno,
-         packetbuf_attr(PACKETBUF_ATTR_RSSI) + 55,
-         packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY),
-         n->recv_count,
-         tmp_seqno);*/
 }
 
 static void
@@ -226,8 +213,8 @@ PROCESS_THREAD(poll_process, ev, data)
 
 	while(1) {
 		
-	/* Send hello message every 4 */
-	etimer_set(&et, CLOCK_SECOND * 5);
+	/* Send hello message every 4 - 8 */
+	etimer_set(&et, CLOCK_SECOND * 4 + random_rand() % (CLOCK_SECOND * 4));
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 	if(isSink == 0){
@@ -244,7 +231,7 @@ PROCESS_THREAD(poll_process, ev, data)
 			leds_off(LEDS_GREEN);
 		}
 	}
-	/* Remove node or decrease TTL*/
+	/* Remove node or decrease TTL */
 	for(node = list_head(node_addresses); node != NULL; node = list_item_next(node)) {
 		if(node->ttl == 0){
 			list_remove(node_addresses, node);
@@ -284,7 +271,8 @@ PROCESS_THREAD(scan_process, ev, data)
 
 	while(1) {
 	
-	etimer_set(&et, CLOCK_SECOND * 3 + random_rand() % (CLOCK_SECOND * 3));
+	/* Send broadcast message every 5 - 10 */
+	etimer_set(&et, CLOCK_SECOND * 5 + random_rand() % (CLOCK_SECOND * 5));
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 	/* Prepare message and send broadcast */
@@ -314,7 +302,7 @@ PROCESS_THREAD(scan_process, ev, data)
 		else {
 			/* Send each neighbordata to sink*/
 			for(n = list_head(neighbors_list); n != NULL; n = list_item_next(n)) {
-				etimer_set(&et, CLOCK_SECOND * 1 + random_rand() % (CLOCK_SECOND * 1));
+				etimer_set(&et, CLOCK_SECOND * 5 + random_rand() % (CLOCK_SECOND * 2));
 				PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 				memcpy(&(sink_message.seqno), &(seqno), sizeof(seqno));
 				sink_message.n = *n;
