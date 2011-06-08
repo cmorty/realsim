@@ -239,7 +239,7 @@ class Listener extends Thread {
 							double ratio = new Double(t.nextToken()) / 100.0;
 							int rssi = new Integer(t.nextToken());
 							int lqi = new Integer(t.nextToken());
-							if(ratio <= 0.1 || ratio > 1.0 || rssi > 90 || rssi <= 0 || lqi > 110 || lqi <= 0){
+							if(ratio <= 0.0 || ratio > 1.0 || rssi > 90 || rssi <= 0 || lqi > 110 || lqi <= 0){
 								g.getPanel().removeEdge(edge);
 								continue lines;
 							}
