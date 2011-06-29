@@ -1,4 +1,4 @@
-package se.sics.cooja.plugins;
+package src;
 
 import java.awt.Color;
 import java.io.BufferedReader;
@@ -22,6 +22,7 @@ import se.sics.cooja.Simulation;
 import se.sics.cooja.VisPlugin;
 import se.sics.cooja.mspmote.SkyMoteType;
 import se.sics.cooja.mspmote.interfaces.SkyByteRadio;
+import se.sics.cooja.plugins.Visualizer;
 import se.sics.cooja.radiomediums.DGRMDestinationRadio;
 import se.sics.cooja.radiomediums.DirectedGraphMedium;
 import se.sics.cooja.radiomediums.DirectedGraphMedium.Edge;
@@ -272,30 +273,6 @@ class Listener extends Thread {
 		}
 		catch(IOException e){
 			e.printStackTrace();
-		}
-	}
-	
-	// Help class
-	public class MyEdge {
-		
-		private int src;
-		private int dst;
-		
-		public MyEdge(int src, int dst){
-			this.src = src;
-			this.dst = dst;
-		}
-		
-		public int getSrc(){
-			return this.src;
-		}
-		
-		public int getDst(){
-			return this.dst;
-		}
-		
-		public boolean equals(MyEdge e){
-			return (this.getSrc() == e.getSrc() &&  this.getDst() == e.getDst()) ? true : false;
 		}
 	}
 }

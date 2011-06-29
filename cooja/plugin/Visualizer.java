@@ -944,7 +944,7 @@ public class Visualizer extends VisPlugin {
   /**
    * Reset transform to show all motes.
    */
-  protected void resetViewport() {
+  public void resetViewport() {
     Mote[] motes = simulation.getMotes();
     if (motes.length == 0) {
       /* No motes */

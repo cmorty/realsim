@@ -1,4 +1,4 @@
-package se.sics.cooja.plugins;
+package src;
 
 import java.util.*;
 import java.awt.*;
@@ -6,13 +6,12 @@ import java.awt.event.*;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JToggleButton;
-
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.GUI;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.VisPlugin;
-import se.sics.cooja.plugins.Listener.MyEdge;
+import se.sics.cooja.plugins.*;
 
 class Node {
     double x;
@@ -144,7 +143,11 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 				if(n != null && sim.getMoteWithID(new Integer(n.lbl)) != null){
 					sim.getMoteWithID(new Integer(n.lbl)).getInterfaces().getPosition().setCoordinates(n.x/50, n.y/50, 0);
 					if(v.resetViewport > 0){
-						v.resetViewport();
+						try {
+							v.resetViewport();
+						} catch (ConcurrentModificationException e){
+							
+						}
 					}
 				}
 			}
