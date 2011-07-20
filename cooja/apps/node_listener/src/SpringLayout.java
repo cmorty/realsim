@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 package src;
 
 import java.util.*;
@@ -26,7 +27,7 @@ class Edge {
     Node from;
     Node to;
     public double len(){
-    	return GraphPanel.view ? rssi : lqi;
+    	return GraphPanel.view ? Math.round(rssi*GraphPanel.scale)+1 : Math.round(lqi*GraphPanel.scale)+1;
     }
     public void setRSSI(double rssi){
     	this.rssi = rssi;
@@ -42,12 +43,13 @@ class Edge {
 class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionListener {
 	private static final long serialVersionUID = 1L;
 	public static boolean view = true;
+	public static double scale = 1.0;
 	SpringLayout graph;
     ArrayList<Node> nodes = new ArrayList<Node>();
     ArrayList<Edge> edges = new ArrayList<Edge>();
     Thread relaxer;
     Simulation sim;
-
+    
     public GraphPanel(SpringLayout graph, Simulation sim) {
     	this.graph = graph;
     	this.sim = sim;
@@ -139,18 +141,19 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		while (relaxer == me) {
 		    relax();
 		    Visualizer v = (Visualizer)(sim.getGUI().getPlugin("Visualizer"));
-			for(Node n: nodes){
-				if(n != null && sim.getMoteWithID(new Integer(n.lbl)) != null){
-					sim.getMoteWithID(new Integer(n.lbl)).getInterfaces().getPosition().setCoordinates(n.x/50, n.y/50, 0);
-					if(v.resetViewport > 0){
-						try {
+		    try {
+				for(Node n: nodes){
+					if(n != null && sim.getMoteWithID(new Integer(n.lbl)) != null){
+						sim.getMoteWithID(new Integer(n.lbl)).getInterfaces().getPosition().setCoordinates(n.x/50, n.y/50, 0);
+						if(v.resetViewport > 0){
 							v.resetViewport();
-						} catch (ConcurrentModificationException e){
-							
-						}
+						} 		
 					}
 				}
+			} catch (ConcurrentModificationException e){
+				
 			}
+				
 			for(int i = 0; i < edges.size(); i++){
 				Edge e = edges.get(i);
 				e.ttl--;
@@ -396,6 +399,8 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
     Button shake = new Button("Shake");
     Button rssi = new Button("RSSI-View");
     Button lqi = new Button("LQI-View");
+    Button zoom_in = new Button("+");
+    Button zoom_out = new Button("-");
     
     JToggleButton pause = new JToggleButton("Pause");
 	
@@ -415,12 +420,15 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 		controlPanel.add(shake); shake.addActionListener(this);
 		controlPanel.add(rssi); rssi.addActionListener(this);
 		controlPanel.add(lqi); lqi.addActionListener(this);
+		controlPanel.add(zoom_in); zoom_in.addActionListener(this);
+		controlPanel.add(zoom_out); zoom_out.addActionListener(this);
 		controlPanel.add(pause); pause.addActionListener(this);
 		
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setLocation(510,0);
 		this.setSize(520, 320);
 		this.setBackground(Color.WHITE);
+		updateUI();
     }
 
     public void destroy() {
@@ -468,6 +476,16 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 		}
 		if(src == lqi){
 			GraphPanel.view = false;
+		}
+		if(src == zoom_in){
+			GraphPanel.scale += 0.1;
+			repaint();
+		}
+		if(src == zoom_out){
+			if(GraphPanel.scale > 0.1){
+				GraphPanel.scale -= 0.1;
+			}
+			repaint();
 		}
     }
     

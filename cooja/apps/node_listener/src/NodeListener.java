@@ -1,6 +1,9 @@
 package src;
 
+import java.awt.Button;
 import java.awt.Color;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -12,6 +15,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.JTextField;
 import se.sics.cooja.AddressMemory;
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.GUI;
@@ -29,33 +36,53 @@ import se.sics.cooja.radiomediums.DirectedGraphMedium.Edge;
 
 @ClassDescription("NodeListener") 
 @PluginType(PluginType.SIM_STANDARD_PLUGIN)
-public class NodeListener extends VisPlugin {
+public class NodeListener extends VisPlugin implements ActionListener {
 	
 	private static final long serialVersionUID = 4368807123350830772L;
-	protected static final int PORT = 1337;
 	private Simulation sim;
-	private ServerSocket serverSocket;
+	
+	ServerSocket serverSocket;
+	public JPanel controlPanel = new JPanel();
+	Button set_port = new Button("Click to start with port:");
+	JTextField insert_port = new JTextField(4);
+	
 
-	public NodeListener(Simulation simulation, GUI gui) throws IOException {
+	public NodeListener(Simulation simulation, GUI gui)  {
 		super("NodeListener", gui);
 		this.sim = simulation;
+		this.init();
+	}
+	
+	public void init(){
+		insert_port.setToolTipText("PORT");
+		add("Center", controlPanel);
+		controlPanel.add(set_port); set_port.addActionListener(this);
+		controlPanel.add(insert_port); insert_port.addActionListener(this);
 		
+		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setSize(180, 190);
 		this.setLocation(320, 0);
 		this.setBackground(Color.WHITE);
-		this.setDefaultCloseOperation(VisPlugin.EXIT_ON_CLOSE);
-		serverSocket = new ServerSocket(PORT);
-		
-		// Start listening thread
-		Listener l = new Listener(sim, serverSocket);
-		l.start();
 	}
-	
-	protected void finalize(){
-		try {
-			serverSocket.close();
-		} catch (IOException e) {
-			e.printStackTrace();
+
+	public void actionPerformed(ActionEvent e) {
+		Object src = e.getSource();
+		if(src == set_port){
+			try {
+				int port = new Integer(insert_port.getText());
+				serverSocket = new ServerSocket(port);
+				Listener l = new Listener(sim, serverSocket, controlPanel);
+				l.start();
+				controlPanel.removeAll();
+				JProgressBar bar = new JProgressBar(JProgressBar.HORIZONTAL);
+				bar.setValue(0);
+				bar.setString("Listening...");
+				bar.setStringPainted(true);
+				controlPanel.add(bar);
+				updateUI();
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}	
 		}
 	}
 }
@@ -66,18 +93,22 @@ class Listener extends Thread {
 	private DirectedGraphMedium radioMedium = null;
 	private ServerSocket serverSocket;
 	private SpringLayout g;
+	public Socket socket;
+	private JPanel controlPanel;
 	
-	public Listener(Simulation simulation, ServerSocket serverSocket){
+	public Listener(Simulation simulation, ServerSocket serverSocket, JPanel panel) throws IOException{
 		this.sim = simulation;
 		this.serverSocket = serverSocket;
 		this.radioMedium = (DirectedGraphMedium)sim.getRadioMedium();
 		this.radioMedium.clearEdges();	
+		this.controlPanel = panel;
 	}
 	
 	public void run() {
 		try {
 			while(true){
 				Socket socket = serverSocket.accept();
+				controlPanel.add(new JTextField("Host Connected: " + socket.getInetAddress().getHostName()));
 				InputStream in = socket.getInputStream();
 				BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 				String line;

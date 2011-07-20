@@ -1,6 +1,6 @@
 package src;
 
-// Help class
+// Help class to identify Edges easily
 public class MyEdge {
 	
 	private int src;
