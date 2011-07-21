@@ -49,7 +49,9 @@ static unsigned char rxbuf[2048];
 static int
 usage(int result)
 {
-  printf("Usage: serialdump [-x] [-s[on]] [-i] [-bSPEED] [SERIALDEVICE]\n");
+  printf("Usage: serialdump [-p PORT] [-h HOST] [-x] [-s[on]] [-i] [-bSPEED] [SERIALDEVICE]\n");
+  printf("       -p to set port\n");
+  printf("       -h to set host\n");
   printf("       -x for hexadecimal output\n");
   printf("       -i for decimal output\n");
   printf("       -s for automatic SLIP mode\n");
@@ -101,11 +103,25 @@ int main(int argc, char **argv)
   unsigned char mode = MODE_START_TEXT;
   int nfound, flags = 0;
   unsigned char lastc = '\0';
+  unsigned int port = 1337;
+  struct hostent *host = gethostbyname("localhost");
 
   int index = 1;
   while (index < argc) {
     if (argv[index][0] == '-') {
       switch(argv[index][1]) {
+      case 'p':
+    	  port = atoi(argv[++index]);
+    	  break;
+      case 'h':
+    	  if(argc <= index+1){
+    		  return usage(1);
+    	  }
+      	  if((host = gethostbyname(argv[++index])) == NULL){
+      		fprintf(stderr, "unknown host: %s\n", argv[index]);
+      		return usage(1);
+      	  }
+      	  break;
       case 'b':
 	/* set speed */
 	if (strcmp(&argv[index][2], "38400") == 0) {
@@ -152,8 +168,6 @@ int main(int argc, char **argv)
 	}
 	mode = MODE_START_DATE;
 	break;
-      case 'h':
-	return usage(0);
       default:
 	fprintf(stderr, "unknown option '%c'\n", argv[index][1]);
 	return usage(1);
@@ -167,7 +181,7 @@ int main(int argc, char **argv)
       }
     }
   }
-  fprintf(stderr, "connecting to %s (%s)", device, speedname);
+  fprintf(stderr, "connecting to %s (%s) on %s::%d", device, speedname, host->h_name, port);
 
   fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY | O_SYNC );
   if (fd <0) {
@@ -207,17 +221,17 @@ int main(int argc, char **argv)
   }
 	int sock;
 	struct sockaddr_in saddr;
-	struct hostent *host;
 	
+
 	if((sock = socket(PF_INET,SOCK_STREAM,0)) == -1){
 		perror("socket");
 		exit(EXIT_FAILURE);
 	}
-	host = gethostbyname("localhost");
+
 	memset(&saddr, 0, sizeof(saddr));
 	memcpy((char *) &saddr.sin_addr, (char *) host->h_addr, host->h_length);
 	saddr.sin_family = AF_INET;
-	saddr.sin_port = htons(PORT);
+	saddr.sin_port = htons(port);
 	
 	if(connect(sock,(const struct sockaddr *)&saddr,sizeof(struct sockaddr_in)) < 0)
 	{

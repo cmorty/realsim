@@ -1,6 +1,5 @@
 package src;
 
-import java.awt.Button;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -19,6 +18,8 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JTextField;
+import javax.swing.JToggleButton;
+
 import se.sics.cooja.AddressMemory;
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.GUI;
@@ -43,7 +44,7 @@ public class NodeListener extends VisPlugin implements ActionListener {
 	
 	ServerSocket serverSocket;
 	public JPanel controlPanel = new JPanel();
-	Button set_port = new Button("Click to start with port:");
+	JToggleButton set_port = new JToggleButton("Click to start with port:");
 	JTextField insert_port = new JTextField(4);
 	
 
@@ -76,10 +77,11 @@ public class NodeListener extends VisPlugin implements ActionListener {
 				controlPanel.removeAll();
 				JProgressBar bar = new JProgressBar(JProgressBar.HORIZONTAL);
 				bar.setValue(0);
-				bar.setString("Listening...");
+				bar.setString("Listening... (" + port + ")");
 				bar.setStringPainted(true);
+				bar.setIndeterminate(true);
 				controlPanel.add(bar);
-				updateUI();
+				updateUI();			
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}	
@@ -108,7 +110,10 @@ class Listener extends Thread {
 		try {
 			while(true){
 				Socket socket = serverSocket.accept();
-				controlPanel.add(new JTextField("Host Connected: " + socket.getInetAddress().getHostName()));
+				JTextField c = new JTextField();
+				c.setText("Connected: " + socket.getInetAddress().getHostName());
+				controlPanel.add(c);
+				controlPanel.add(new JTextField());
 				InputStream in = socket.getInputStream();
 				BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 				String line;
@@ -118,6 +123,9 @@ class Listener extends Thread {
 				this.g = (SpringLayout)sim.getGUI().getPlugin("SpringLayout");
 				
 		lines:	while((line = reader.readLine()) != null){
+					JTextField newline = (JTextField)controlPanel.getComponent(2);
+					newline.setText(line);
+					controlPanel.updateUI();
 					if(!line.contains("::") || line.contains("MAC"))continue;
 					StringTokenizer t = new StringTokenizer(line, "::");
 					while(t.hasMoreElements()){
