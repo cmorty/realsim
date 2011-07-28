@@ -14,10 +14,10 @@
 #include <netinet/tcp.h>
 
 
-#define BAUDRATE B57600
-#define BAUDRATE_S "57600"
+#define BAUDRATE B115200
+#define BAUDRATE_S "115200"
 #ifdef linux
-#define MODEMDEVICE "/dev/ttyS0"
+#define MODEMDEVICE "/dev/ttyUSB0"
 #else
 #define MODEMDEVICE "/dev/com1"
 #endif /* linux */
@@ -28,7 +28,6 @@
 #define SLIP_ESC_ESC 0335
 
 #define CSNA_INIT 0x01
-#define PORT 1337
 
 #define BUFSIZE 1024
 #define HCOLS 20
