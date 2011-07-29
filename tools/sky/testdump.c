@@ -9,7 +9,7 @@
 #include <netdb.h>
 #include <netinet/tcp.h>
 
-#define BUFSIZE 1024*16
+#define BUFSIZE 1024*1024
 
 static int
 usage(int result)
@@ -29,6 +29,7 @@ int main(int argc, char **argv)
 	struct sockaddr_in saddr;
 	struct hostent *host = gethostbyname("localhost");
 	unsigned char buf[BUFSIZE];
+	unsigned char time_buf[32];
 	FILE *fp;
 	const char *filename;
 	int i;
@@ -84,14 +85,17 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	// Write file to buf
 	int c;
 	int k = 0;
 	while ((c = fgetc(fp)) != EOF){
-	   buf[k++] = c;
+		buf[k++] = c;
 	}
 
 	/* Send buffer to plugin */
 	// Print buffer
+	int old_time = 0;
+	int new_time = 0;
 	for(i = 0; i < k; i++){
 		printf("%c", buf[i]);
 		/* write buffer to stream socket */
@@ -104,9 +108,16 @@ int main(int argc, char **argv)
 		fflush(NULL);
 		fflush(stdout);
 
-		/* Wait 2 Seconds after each line */
+		/* Time each line right*/
 		if(buf[i] == '\n'){
-			sleep(2);
+			int k = i;
+			int asdf = 0;
+			while(buf[++k] != ':'){
+				time_buf[asdf++] = buf[k];
+			}
+			old_time = new_time;
+			new_time = atoi(time_buf);
+			sleep(new_time - old_time);
 		}
 	}
   close(sock);

@@ -3,6 +3,7 @@
 #include "lib/memb.h"
 #include "lib/random.h"
 #include "net/rime.h"
+#include "sys/clock.h"
 #include <stdio.h>
 #include "dev/leds.h"
 
@@ -149,6 +150,9 @@ recv(struct mesh_conn *c, const rimeaddr_t *from, uint8_t hops)
 		}
 
 		/* Print nodes and/or remove dead nodes */
+
+		// Print Timestamp at beginning
+		printf("%lu::", clock_seconds());
 		for(node = list_head(node_addresses); node != NULL; node = list_item_next(node)) {
 			if(node->ttl == 0){
 				list_remove(node_addresses, node);
@@ -160,7 +164,8 @@ recv(struct mesh_conn *c, const rimeaddr_t *from, uint8_t hops)
 	else {
 		/* Print received Information */
 		/* Packets from Node 1 -> Node 2 have a success ratio of recv_count/seqno (to be received by Node 2)*/
-		printf("edge::%d.%d::%d.%d::%d::%d::%d::\n",
+		printf("%lu::edge::%d.%d::%d.%d::%d::%d::%d::\n",
+			clock_seconds(),
 			tmp_addr.u8[0],
 			tmp_addr.u8[1],
 			tmp_own_addr.u8[0],
@@ -200,6 +205,7 @@ PROCESS_THREAD(poll_process, ev, data)
 		list_add(node_addresses, sink);
 		isSink = 1;
 		printf("I am sink\n");
+		clock_init();
 	}
 
 	etimer_set(&et, CLOCK_SECOND * 2);
@@ -288,7 +294,8 @@ PROCESS_THREAD(scan_process, ev, data)
 		/* If Sink, print out edge instead of sending (to Sink)*/
 		if(rimeaddr_node_addr.u8[0] == 80) {
 			for(n = list_head(neighbors_list); n != NULL; n = list_item_next(n)) {
-				printf("edge::%d.%d::%d.%d::%d::%d::%d::\n",
+				printf("%lu::edge::%d.%d::%d.%d::%d::%d::%d::\n",
+				clock_seconds(),
 				n->addr.u8[0],
 				n->addr.u8[1],
 				rimeaddr_node_addr.u8[0],
