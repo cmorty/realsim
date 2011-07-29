@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 	struct sockaddr_in saddr;
 	struct hostent *host = gethostbyname("localhost");
 	unsigned char buf[BUFSIZE];
-	unsigned char time_buf[32];
+	unsigned char time_buf[4];
 	FILE *fp;
 	const char *filename;
 	int i;
@@ -109,17 +109,18 @@ int main(int argc, char **argv)
 		fflush(stdout);
 
 		/* Time each line right*/
-		if(buf[i] == '\n'){
-			int k = i;
+		if(buf[i] == '\n' && i < k-1){
+			int index = i;
 			int asdf = 0;
-			while(buf[++k] != ':'){
-				time_buf[asdf++] = buf[k];
+			while(buf[++index] != ':' && asdf < 4){
+				time_buf[asdf++] = buf[index];
 			}
 			old_time = new_time;
 			new_time = atoi(time_buf);
 			sleep(new_time - old_time);
 		}
 	}
+
   close(sock);
   return;
 }
