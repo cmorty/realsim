@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 package src;
 
 import java.util.*;
@@ -26,17 +25,50 @@ class Node {
 class Edge {
     Node from;
     Node to;
+    
     public double len(){
-    	return GraphPanel.view ? Math.round(rssi*GraphPanel.scale)+1 : Math.round(lqi*GraphPanel.scale)+1;
+    	if(GraphPanel.view){
+    		if(GraphPanel.max_value){
+    			return Math.round(this.rssi_max*GraphPanel.scale)+1;
+    		}
+    		else {
+    			return Math.round(this.rssi*GraphPanel.scale)+1;
+    		}
+    	}
+    	else {
+    		if(GraphPanel.max_value){
+    			return Math.round(this.lqi_max*GraphPanel.scale)+1;
+    		}
+    		else {
+    			return Math.round(this.lqi*GraphPanel.scale)+1;
+    		}
+    	}
     }
+    
     public void setRSSI(double rssi){
     	this.rssi = rssi;
     }
+    
     public void setLQI(double lqi){
     	this.lqi = lqi;
     }
+    
+    public void setMaxRSSI(double rssi){
+    	if(rssi > this.rssi_max){
+    		this.rssi_max = rssi;
+    	}
+    }
+    
+    public void setMaxLQI(double lqi){
+    	if(lqi > this.lqi_max){
+    		this.lqi_max = lqi;
+    	}
+    }
+    
     double rssi;
     double lqi;
+    double rssi_max = 0;
+    double lqi_max = 0;
     int ttl;
 }
 
@@ -44,6 +76,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 	private static final long serialVersionUID = 1L;
 	public static boolean view = true;
 	public static double scale = 1.0;
+	public static boolean max_value = false;
 	SpringLayout graph;
     ArrayList<Node> nodes = new ArrayList<Node>();
     ArrayList<Edge> edges = new ArrayList<Edge>();
@@ -117,6 +150,8 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 			e.setRSSI(rssi);
 			e.setLQI(lqi);
 		}
+		e.setMaxRSSI(rssi);
+		e.setMaxLQI(lqi);
 		e.ttl = 10000;
 		edges.add(e);;
     }
@@ -403,6 +438,7 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
     Button zoom_out = new Button("-");
     
     JToggleButton pause = new JToggleButton("Pause");
+    JToggleButton max_min = new JToggleButton("Avrg View");
 	
 	public SpringLayout(Simulation sim, GUI gui){
 		super("SpringLayout", gui);
@@ -423,12 +459,14 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 		controlPanel.add(zoom_in); zoom_in.addActionListener(this);
 		controlPanel.add(zoom_out); zoom_out.addActionListener(this);
 		controlPanel.add(pause); pause.addActionListener(this);
+		controlPanel.add(max_min); max_min.addActionListener(this);
 		
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setLocation(510,0);
 		this.setSize(520, 320);
 		this.setBackground(Color.WHITE);
 		updateUI();
+		repaint();
     }
 
     public void destroy() {
@@ -469,6 +507,18 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 			else {
 				panel.stop();
 				repaint();
+			}
+		}
+		if(src == max_min){
+			if(!max_min.getModel().isSelected()){
+				GraphPanel.max_value = false;
+				max_min.setText("Avrg View");
+				updateUI();
+			}
+			else {
+				GraphPanel.max_value = true;
+				max_min.setText("Max View");
+				updateUI();
 			}
 		}
 		if(src == rssi){
