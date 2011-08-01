@@ -291,7 +291,7 @@ class Listener extends Thread {
 							radioMedium.addEdge(newEdge);
 							edges.add(edge);
 							radioMedium.requestEdgeAnalysis();
-							g.getPanel().addEdge(String.valueOf(id_src),String.valueOf(id_dst),(int)Math.pow(90-rssi, 2) / 25, (int)((Math.pow(110-lqi, 2))+ (100*ratio)));
+							g.getPanel().addEdge(String.valueOf(id_src),String.valueOf(id_dst),(int)Math.pow(90-rssi, 2) / 25, (int)((Math.pow(110-lqi, 2))+ (100 - (100*ratio))));
 							v.resetViewport++;
 							
 							// Ignore those Exceptions

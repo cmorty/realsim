@@ -54,21 +54,21 @@ class Edge {
     }
     
     public void setMaxRSSI(double rssi){
-    	if(rssi > this.rssi_max){
+    	if(rssi < this.rssi_max){
     		this.rssi_max = rssi;
     	}
     }
     
     public void setMaxLQI(double lqi){
-    	if(lqi > this.lqi_max){
+    	if(lqi < this.lqi_max){
     		this.lqi_max = lqi;
     	}
     }
     
     double rssi;
     double lqi;
-    double rssi_max = 0;
-    double lqi_max = 0;
+    double rssi_max = 1000;
+    double lqi_max = 1000;
     int ttl;
 }
 
@@ -145,6 +145,8 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		if(oldedge != null) {
 			e.setRSSI(Math.round((rssi + oldedge.rssi)/2));
 			e.setLQI(Math.round(lqi + oldedge.lqi)/2);
+			e.setMaxRSSI(oldedge.rssi_max);
+			e.setMaxLQI(oldedge.lqi_max);
 		}
 		else {
 			e.setRSSI(rssi);
