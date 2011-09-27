@@ -254,7 +254,7 @@ class Listener extends Thread {
 							id_dst = new Integer(s2.substring(0, s2.indexOf('.')));
 							edge = new MyEdge(id_src, id_dst);
 
-							if(!sim.getMotesID().contains(id_src) || !sim.getMotesID().contains(id_dst)){
+							if(!getMotesID().contains(id_src) || !getMotesID().contains(id_dst)){
 								continue lines;
 							}
 
@@ -313,5 +313,17 @@ class Listener extends Thread {
 		catch(IOException e){
 			e.printStackTrace();
 		}
+	}
+	
+	/**
+	 * 
+	 * @return Mote by IDs
+	 */
+	public ArrayList<Integer> getMotesID() {
+		ArrayList<Integer> ids = new ArrayList<Integer>();
+		for (Mote m : sim.getMotes()) {
+			ids.add(m.getID());
+		}
+		return ids;
 	}
 }
