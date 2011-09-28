@@ -4,7 +4,6 @@ import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -13,23 +12,25 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.NoSuchElementException;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.StringTokenizer;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
+import javax.swing.JComboBox;
 
 import se.sics.cooja.AddressMemory;
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.GUI;
 import se.sics.cooja.Mote;
-import se.sics.cooja.MoteInterface;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
+import se.sics.cooja.MoteType;
 import se.sics.cooja.VisPlugin;
-import se.sics.cooja.mspmote.SkyMoteType;
-import se.sics.cooja.mspmote.interfaces.SkyByteRadio;
+import se.sics.cooja.interfaces.Radio;
 import se.sics.cooja.plugins.Visualizer;
 import se.sics.cooja.radiomediums.DGRMDestinationRadio;
 import se.sics.cooja.radiomediums.DirectedGraphMedium;
@@ -37,15 +38,16 @@ import se.sics.cooja.radiomediums.DirectedGraphMedium.Edge;
 
 @ClassDescription("NodeListener") 
 @PluginType(PluginType.SIM_STANDARD_PLUGIN)
-public class NodeListener extends VisPlugin implements ActionListener {
+public class NodeListener extends VisPlugin implements ActionListener, Observer {
 	
 	private static final long serialVersionUID = 4368807123350830772L;
-	private Simulation sim;
+	protected Simulation sim;
 	
 	ServerSocket serverSocket;
 	public JPanel controlPanel = new JPanel();
 	JToggleButton set_port = new JToggleButton("Click to start with port:");
 	JTextField insert_port = new JTextField(4);
+	JComboBox default_node = new JComboBox();
 	
 
 	public NodeListener(Simulation simulation, GUI gui)  {
@@ -59,6 +61,9 @@ public class NodeListener extends VisPlugin implements ActionListener {
 		add("Center", controlPanel);
 		controlPanel.add(set_port); set_port.addActionListener(this);
 		controlPanel.add(insert_port); insert_port.addActionListener(this);
+		controlPanel.add(default_node); insert_port.addActionListener(this);
+		sim.addObserver(this);
+		System.out.println("Added observer");
 		
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setSize(180, 190);
@@ -72,7 +77,7 @@ public class NodeListener extends VisPlugin implements ActionListener {
 			try {
 				int port = new Integer(insert_port.getText());
 				serverSocket = new ServerSocket(port);
-				Listener l = new Listener(sim, serverSocket, controlPanel);
+				Listener l = new Listener(this);
 				l.start();
 				controlPanel.removeAll();
 				JProgressBar bar = new JProgressBar(JProgressBar.HORIZONTAL);
@@ -81,13 +86,43 @@ public class NodeListener extends VisPlugin implements ActionListener {
 				bar.setStringPainted(true);
 				bar.setIndeterminate(true);
 				controlPanel.add(bar);
+				controlPanel.add(default_node);
 				updateUI();			
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}	
 		}
 	}
+
+	@Override
+	/**
+	 * TODO This might need some cleanup
+	 */
+	public void update(Observable obj, Object arg1) {
+		int cnt, cnt2;
+		MoteType[] mt = sim.getMoteTypes();
+		int num = default_node.getItemCount();
+		ArrayList<String> itms = new ArrayList<String>();
+		
+		for (cnt=0; cnt<num; cnt++) {
+		    itms.add((String) default_node.getItemAt(cnt));
+		}
+		
+		//Add missing
+		for(cnt = 0; cnt < mt.length; cnt++ ){
+			System.out.println("IT" + mt[cnt].getIdentifier() + " - " + mt[cnt].getDescription());
+			for(cnt2 = 0; cnt2 < itms.size(); cnt2++){
+				if(mt[cnt].getDescription().equals(itms.get(cnt2))) break;
+			}
+			if(cnt2 ==  itms.size()){
+				default_node.addItem(mt[cnt].getDescription());
+			}
+		}
+		
+	}
 }
+
+
 
 class Listener extends Thread {
 	
@@ -97,13 +132,15 @@ class Listener extends Thread {
 	private SpringLayout g;
 	public Socket socket;
 	private JPanel controlPanel;
+	private JComboBox default_node;
 	
-	public Listener(Simulation simulation, ServerSocket serverSocket, JPanel panel) throws IOException{
-		this.sim = simulation;
-		this.serverSocket = serverSocket;
+	public Listener(NodeListener nl) throws IOException{
+		this.sim = nl.sim;
+		this.serverSocket = nl.serverSocket;
 		this.radioMedium = (DirectedGraphMedium)sim.getRadioMedium();
 		this.radioMedium.clearEdges();	
-		this.controlPanel = panel;
+		this.controlPanel = nl.controlPanel;
+		this.default_node = nl.default_node;
 	}
 	
 	public void run() {
@@ -178,6 +215,8 @@ class Listener extends Thread {
 							
 							for(Integer id: motes.keySet()){
 								// Check if Mote already added to Simulation
+								MoteType moteT = null;
+								
 								if(sim.getMoteWithID(id) != null){
 									continue;
 								}
@@ -188,45 +227,33 @@ class Listener extends Thread {
 									isRunning = true;
 								}
 								
-								SkyMoteType sky = new SkyMoteType();
-								sky.setDescription("Sky Mote #1");
-								sky.setIdentifier("sky1");
-								ArrayList<Class<? extends MoteInterface>> interfaces = new ArrayList<Class<? extends MoteInterface>>();
-								interfaces.add(se.sics.cooja.interfaces.Position.class);
-								interfaces.add(se.sics.cooja.interfaces.RimeAddress.class);
-								interfaces.add(se.sics.cooja.interfaces.IPAddress.class);
-								interfaces.add(se.sics.cooja.interfaces.Mote2MoteRelations.class);
-								interfaces.add(se.sics.cooja.interfaces.MoteAttributes.class);
-								interfaces.add(se.sics.cooja.mspmote.interfaces.MspClock.class);
-								interfaces.add(se.sics.cooja.mspmote.interfaces.MspMoteID.class);
-								interfaces.add(se.sics.cooja.mspmote.interfaces.SkyButton.class);
-								interfaces.add(se.sics.cooja.mspmote.interfaces.SkyFlash.class);
-								interfaces.add(se.sics.cooja.mspmote.interfaces.SkyCoffeeFilesystem.class);
-								interfaces.add(se.sics.cooja.mspmote.interfaces.SkyByteRadio.class);
-								interfaces.add(se.sics.cooja.mspmote.interfaces.MspSerial.class);
-								interfaces.add(se.sics.cooja.mspmote.interfaces.SkyLED.class);
-								interfaces.add(se.sics.cooja.mspmote.interfaces.MspDebugOutput.class);
-								interfaces.add(se.sics.cooja.mspmote.interfaces.SkyTemperature.class);
-								Class<? extends MoteInterface>[] classes = (Class[])interfaces.toArray(new Class[interfaces.size()]);
-								sky.setMoteInterfaceClasses(classes);
+								
+								MoteType[] mt = sim.getMoteTypes();
+			
+								//Find MoteType
+								//TODO Make this configurable
+								for(int cnt = 0; cnt < mt.length; cnt++ ){
+									moteT =  mt[cnt];
+									if(moteT.getDescription().equals(default_node.getSelectedItem().toString())) break;;
+								}
+								
+								if(moteT == null){
+									continue;
+								}
 								
 								if(isRunning){
 									sim.stopSimulation();
 								}
 								
-								// Set Firmware and Simulation (Sink is id 80)
-								sky.setContikiFirmwareFile(new File("/media/E/Doc/Uni/Cooja/examples/sky/scan-neighbors.sky"));
-								sky.setSimulation(sim);
+								Mote mote = moteT.generateMote(sim);
+								sim.addMote(mote);
 								
-								// Generate Mote, set Position(random) and add to Simulation
-								Mote mote = sky.generateMote(sim);
+
 								double x = (Math.random()*10000)% 15;
 								double y = (Math.random()*10000)% 15;
 								mote.getInterfaces().getPosition().setCoordinates(x, y, 0);
 								mote.getInterfaces().getMoteID().setMoteID(id);
-								if(sim.getMotesCount() == 0)sim.addMoteType(sky);
-								mote.setType(sim.getMoteTypes()[0]);
-								sim.addMote(mote);
+
 								g.getPanel().addNode(String.valueOf(id));
 								
 								if(isRunning){
@@ -267,8 +294,8 @@ class Listener extends Thread {
 							// Remove old existing edge
 							if(e_exists){
 								for(DirectedGraphMedium.Edge e : radioMedium.getEdges()){
-									SkyByteRadio src = (SkyByteRadio) e.source;
-									SkyByteRadio dst = (SkyByteRadio) e.superDest.radio;
+									Radio src =  e.source;
+									Radio dst = e.superDest.radio;
 									if(src.getMote().getID() == edge.getSrc() && dst.getMote().getID() == edge.getDst()){
 										radioMedium.removeEdge(e);
 									}
