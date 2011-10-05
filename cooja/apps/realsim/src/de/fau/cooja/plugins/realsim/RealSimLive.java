@@ -1,4 +1,35 @@
-package src;
+/**
+ * Copyright (c) 2011, Simon Böhm
+ * Copyright (c) 2011, Moritz Strübe
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
+ * 
+ * @author Simon Böhm <mail@boehm-simon.de>
+ * @author Moritz "Morty" Strübe <Moritz.Struebe@informatik.uni-erlangen.de>
+ * 
+ */
+
+package de.fau.cooja.plugins.realsim;
+
 
 import java.awt.Color;
 import java.awt.event.ActionEvent;
@@ -36,9 +67,9 @@ import se.sics.cooja.radiomediums.DGRMDestinationRadio;
 import se.sics.cooja.radiomediums.DirectedGraphMedium;
 import se.sics.cooja.radiomediums.DirectedGraphMedium.Edge;
 
-@ClassDescription("NodeListener")
+@ClassDescription("RealSim Live")
 @PluginType(PluginType.SIM_STANDARD_PLUGIN)
-public class NodeListener extends VisPlugin implements ActionListener, Observer {
+public class RealSimLive extends VisPlugin implements ActionListener, Observer {
 	
 	private static final long	serialVersionUID	= 4368807123350830772L;
 	protected Simulation		sim;
@@ -49,8 +80,8 @@ public class NodeListener extends VisPlugin implements ActionListener, Observer 
 	JTextField					insert_port			= new JTextField(4);
 	JComboBox					default_node		= new JComboBox();
 	
-	public NodeListener(Simulation simulation, GUI gui) {
-		super("NodeListener", gui);
+	public RealSimLive(Simulation simulation, GUI gui) {
+		super("RealSim Live", gui);
 		this.sim = simulation;
 	}
 	
@@ -135,14 +166,16 @@ class Listener extends Thread {
 	public Socket				socket;
 	private JPanel				controlPanel;
 	private JComboBox			default_node;
+	private RealSim				rs;
 	
-	public Listener(NodeListener nl) throws IOException {
-		this.sim = nl.sim;
-		this.serverSocket = nl.serverSocket;
+	public Listener(RealSimLive rsl) throws IOException {
+		this.sim = rsl.sim;
+		this.serverSocket = rsl.serverSocket;
 		this.radioMedium = (DirectedGraphMedium) sim.getRadioMedium();
 		this.radioMedium.clearEdges();
-		this.controlPanel = nl.controlPanel;
-		this.default_node = nl.default_node;
+		this.controlPanel = rsl.controlPanel;
+		this.default_node = rsl.default_node;
+		rs = new RealSim(this.sim);
 	}
 	
 	public void run() {
@@ -173,9 +206,7 @@ class Listener extends Thread {
 						
 						// Clear all Nodes
 						if (token.equals("clear")) {
-							while (sim.getMotesCount() > 0) {
-								sim.removeMote(sim.getMote(0));
-							}
+							rs.clear();
 						}
 						
 						// Fill internal mote Array
