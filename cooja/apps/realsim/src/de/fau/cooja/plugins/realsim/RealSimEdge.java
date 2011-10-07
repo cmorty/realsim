@@ -29,26 +29,38 @@
 
 package de.fau.cooja.plugins.realsim;
 
-// Help class to identify Edges easily
-public class MyEdge {
+import se.sics.cooja.radiomediums.AbstractRadioMedium;
+
+// Help class to manage edges
+public class RealSimEdge {
 	
-	private int	src;
-	private int	dst;
+	public int	src;
+	public int	dst;
+	public double ratio = 1.0; /* Link success ratio (per packet). */
+	public double rssi = AbstractRadioMedium.SS_STRONG; /* RSSI */
+	public long delay = 0; /* EXPERIMENTAL: Propagation delay (us). */
+	public int lqi = 105;
 	
-	public MyEdge(int src, int dst) {
+	public RealSimEdge(int src, int dst) {
 		this.src = src;
 		this.dst = dst;
 	}
 	
-	public int getSrc() {
-		return this.src;
+	public RealSimEdge(int src, int dst, double ratio, double rssi, long delay, int lqi) {
+		this.src = src;
+		this.dst = dst;
+		this.ratio = ratio;
+		this.rssi = rssi;
+		this.delay = delay;
+		this.lqi = lqi;
+	}
+
+	
+	public boolean equals(RealSimEdge e) {
+		return (this.src == e.src && this.dst == e.dst) ? true : false;
 	}
 	
-	public int getDst() {
-		return this.dst;
-	}
 	
-	public boolean equals(MyEdge e) {
-		return (this.getSrc() == e.getSrc() && this.getDst() == e.getDst()) ? true : false;
-	}
+	//Todo
+	// if (ratio <= 0.0 || ratio > 1.0 || rssi > 90 || rssi <= 0 || lqi > 110 || lqi <= 0) {
 }

@@ -162,7 +162,6 @@ class Listener extends Thread {
 	private Simulation			sim;
 	private DirectedGraphMedium	radioMedium	= null;
 	private ServerSocket		serverSocket;
-	private SpringLayout		g;
 	public Socket				socket;
 	private JPanel				controlPanel;
 	private JComboBox			default_node;
@@ -190,9 +189,6 @@ class Listener extends Thread {
 				BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 				String line;
 				HashMap<Integer, Integer> motes = new HashMap<Integer, Integer>();
-				ArrayList<MyEdge> edges = new ArrayList<MyEdge>();
-				Visualizer v = (Visualizer) (sim.getGUI().getPlugin("Visualizer"));
-				this.g = (SpringLayout) sim.getGUI().getPlugin("SpringLayout");
 				
 				lines: while ((line = reader.readLine()) != null) {
 					JTextField newline = (JTextField) controlPanel.getComponent(2);
@@ -229,20 +225,7 @@ class Listener extends Thread {
 							// Check for mote removal (remove also from edges)
 							for (Mote sim_mote : sim.getMotes()) {
 								if (!motes.containsKey(sim_mote.getID())) {
-									sim.removeMote(sim_mote);
-									g.getPanel().removeNode(String.valueOf(sim_mote.getID()));
-									int rem = 0;
-									for (MyEdge e : edges) {
-										if (e.getSrc() == sim_mote.getID() || e.getDst() == sim_mote.getID()) {
-											rem++;
-											break;
-										} else {
-											rem++;
-										}
-									}
-									if (!edges.isEmpty()) {
-										edges.remove(rem - 1);
-									}
+									rs.rmMote(sim_mote.getID());
 								}
 							}
 							
@@ -250,16 +233,7 @@ class Listener extends Thread {
 								// Check if Mote already added to Simulation
 								MoteType moteT = null;
 								
-								if (sim.getMoteWithID(id) != null) {
-									continue;
-								}
-								
-								// Set Variable for later use
-								boolean isRunning = false;
-								if (sim.isRunning()) {
-									isRunning = true;
-								}
-								
+																
 								MoteType[] mt = sim.getMoteTypes();
 								
 								// Find MoteType
@@ -271,33 +245,9 @@ class Listener extends Thread {
 									;
 								}
 								
-								if (moteT == null) {
-									continue;
-								}
+								rs.addmote(id, moteT);
 								
-								if (isRunning) {
-									sim.stopSimulation();
-								}
-								
-								Mote mote = moteT.generateMote(sim);
-								sim.addMote(mote);
-								
-								double x = (Math.random() * 10000) % 15;
-								double y = (Math.random() * 10000) % 15;
-								mote.getInterfaces().getPosition().setCoordinates(x, y, 0);
-								mote.getInterfaces().getMoteID().setMoteID(id);
-								
-								g.getPanel().addNode(String.valueOf(id));
-								
-								if (isRunning) {
-									sim.startSimulation();
-								}
-								
-								// Set Rimeaddress
-								byte[] rime_addr = new byte[2];
-								rime_addr[0] = id.byteValue();
-								rime_addr[1] = motes.get(id).byteValue();
-								((AddressMemory) mote.getMemory()).setByteArray("rimeaddr_node_addr", rime_addr);
+							
 							}
 						}
 						
@@ -308,54 +258,34 @@ class Listener extends Thread {
 								String s2 = t.nextToken();
 								int id_src;
 								int id_dst;
-								MyEdge edge;
-								boolean e_exists = false;
+								RealSimEdge edge;
 								id_src = new Integer(s1.substring(0, s1.indexOf('.')));
 								id_dst = new Integer(s2.substring(0, s2.indexOf('.')));
-								edge = new MyEdge(id_src, id_dst);
+								edge = new RealSimEdge(id_src, id_dst);
 								
 								if (!getMotesID().contains(id_src) || !getMotesID().contains(id_dst)) {
 									continue lines;
 								}
 								
-								for (MyEdge e : edges) {
-									if (e.equals(edge)) {
-										e_exists = true;
-									}
-								}
-								
-								// Remove old existing edge
-								if (e_exists) {
-									for (DirectedGraphMedium.Edge e : radioMedium.getEdges()) {
-										Radio src = e.source;
-										Radio dst = e.superDest.radio;
-										if (src.getMote().getID() == edge.getSrc() && dst.getMote().getID() == edge.getDst()) {
-											radioMedium.removeEdge(e);
-										}
-									}
-								}
+
 								
 								// Add new Edge
-								double ratio = new Double(t.nextToken()) / 100.0;
-								int rssi = new Integer(t.nextToken());
-								int lqi = new Integer(t.nextToken());
-								if (ratio <= 0.0 || ratio > 1.0 || rssi > 90 || rssi <= 0 || lqi > 110 || lqi <= 0) {
-									g.getPanel().removeEdge(edge);
+								edge.ratio = new Double(t.nextToken()) / 100.0;
+								edge.rssi = new Integer(t.nextToken());
+								edge.lqi = new Integer(t.nextToken());
+								if (edge.ratio <= 0.0 || edge.ratio > 1.0 || 
+										edge.rssi > 90 || edge.rssi <= 0 || 
+										edge.lqi > 110 || edge.lqi <= 0) {
+									//TODO Error
 									continue lines;
 								}
-								DGRMDestinationRadio dr = new DGRMDestinationRadio(sim.getMoteWithID(id_dst).getInterfaces().getRadio());
-								dr.ratio = ratio;
-								dr.signal = rssi - 100;
-								dr.lqi = lqi;
-								DirectedGraphMedium.Edge newEdge = new Edge(sim.getMoteWithID(id_src).getInterfaces().getRadio(), dr);
-								radioMedium.addEdge(newEdge);
-								edges.add(edge);
-								radioMedium.requestEdgeAnalysis();
-								g.getPanel().addEdge(String.valueOf(id_src), 
+								
+								rs.setEdge(edge);
+								/*g.getPanel().addEdge(String.valueOf(id_src), 
 										String.valueOf(id_dst), 
 										(int) Math.pow(90 - rssi, 2) / 25,
 										(int) ((Math.pow(110 - lqi, 2)) + (100 - (100 * ratio))));
-								v.resetViewport++;
+								v.resetViewport++;*/
 								
 								// Ignore those Exceptions
 							} catch (NumberFormatException e) {

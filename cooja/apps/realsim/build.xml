@@ -47,7 +47,7 @@
 	</target>
 
 
-	<target name="jar_and_cooja_run" depends="jar">
+	<target name="run" depends="jar">
 		<ant antfile="build.xml" dir="${cooja}" target="run" inheritAll="false"/>
 	</target>
 
