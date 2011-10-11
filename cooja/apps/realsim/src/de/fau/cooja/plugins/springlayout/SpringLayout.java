@@ -184,8 +184,8 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		n.y = 10 + 380 * Math.random();
 		n.id = id;
 		n.lbl = ((Integer)id).toString();
-		//TODO Fixme
-		if (id == 80) {
+		//Fix first node
+		if (nodes.size() == 0) {
 			n.fixed = true;
 			n.x = graph.getWidth() / 2;
 			n.y = graph.getHeight() / 2;

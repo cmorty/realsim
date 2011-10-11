@@ -41,10 +41,7 @@ import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.NoSuchElementException;
-import java.util.Observable;
-import java.util.Observer;
 import java.util.StringTokenizer;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -53,23 +50,18 @@ import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.JComboBox;
 
-import se.sics.cooja.AddressMemory;
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.GUI;
 import se.sics.cooja.Mote;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
-import se.sics.cooja.MoteType;
 import se.sics.cooja.VisPlugin;
-import se.sics.cooja.interfaces.Radio;
-import se.sics.cooja.plugins.Visualizer;
-import se.sics.cooja.radiomediums.DGRMDestinationRadio;
 import se.sics.cooja.radiomediums.DirectedGraphMedium;
-import se.sics.cooja.radiomediums.DirectedGraphMedium.Edge;
+
 
 @ClassDescription("RealSim Live")
-@PluginType(PluginType.SIM_STANDARD_PLUGIN)
-public class RealSimLive extends VisPlugin implements ActionListener, Observer {
+@PluginType(PluginType.SIM_PLUGIN)
+public class RealSimLive extends VisPlugin implements ActionListener {
 	
 	private static final long	serialVersionUID	= 4368807123350830772L;
 	protected Simulation		sim;
@@ -78,7 +70,7 @@ public class RealSimLive extends VisPlugin implements ActionListener, Observer {
 	public JPanel				controlPanel		= new JPanel();
 	JToggleButton				set_port			= new JToggleButton("Click to start with port:");
 	JTextField					insert_port			= new JTextField(4);
-	JComboBox					default_node		= new JComboBox();
+	JComboBox					default_node;
 	
 	public RealSimLive(Simulation simulation, GUI gui) {
 		super("RealSim Live", gui);
@@ -88,6 +80,9 @@ public class RealSimLive extends VisPlugin implements ActionListener, Observer {
 	public void startPlugin() {
 		//Do not start if we do not support the medium
 		if(!(sim.getRadioMedium() instanceof DirectedGraphMedium)) return;
+		
+		default_node = new JComboBox(new MoteTypeComboboxModel(sim));
+		
 		insert_port.setToolTipText("PORT");
 		add("Center", controlPanel);
 		controlPanel.add(set_port);
@@ -96,8 +91,8 @@ public class RealSimLive extends VisPlugin implements ActionListener, Observer {
 		insert_port.addActionListener(this);
 		controlPanel.add(default_node);
 		insert_port.addActionListener(this);
-		sim.addObserver(this);
-		System.out.println("Added observer");
+		
+		//System.out.println("Added observer");
 		
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setSize(180, 190);
@@ -128,33 +123,7 @@ public class RealSimLive extends VisPlugin implements ActionListener, Observer {
 		}
 	}
 	
-	@Override
-	/**
-	 * TODO This might need some cleanup
-	 */
-	public void update(Observable obj, Object arg1) {
-		int cnt, cnt2;
-		MoteType[] mt = sim.getMoteTypes();
-		int num = default_node.getItemCount();
-		ArrayList<String> itms = new ArrayList<String>();
-		
-		for (cnt = 0; cnt < num; cnt++) {
-			itms.add((String) default_node.getItemAt(cnt));
-		}
-		
-		// Add missing
-		for (cnt = 0; cnt < mt.length; cnt++) {
-			System.out.println("IT" + mt[cnt].getIdentifier() + " - " + mt[cnt].getDescription());
-			for (cnt2 = 0; cnt2 < itms.size(); cnt2++) {
-				if (mt[cnt].getDescription().equals(itms.get(cnt2)))
-					break;
-			}
-			if (cnt2 == itms.size()) {
-				default_node.addItem(mt[cnt].getDescription());
-			}
-		}
-		
-	}
+
 }
 
 class Listener extends Thread {
@@ -188,7 +157,7 @@ class Listener extends Thread {
 				InputStream in = socket.getInputStream();
 				BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 				String line;
-				HashMap<Integer, Integer> motes = new HashMap<Integer, Integer>();
+				
 				
 				lines: while ((line = reader.readLine()) != null) {
 					JTextField newline = (JTextField) controlPanel.getComponent(2);
@@ -207,13 +176,14 @@ class Listener extends Thread {
 						
 						// Fill internal mote Array
 						if (token.equals("node")) {
+							ArrayList<Integer> motes = new ArrayList<Integer>();
 							while (t.hasMoreElements()) {
 								String s = t.nextToken();
 								if (s.length() > 2 && !s.equals("node")) {
 									try {
 										Integer id1 = new Integer(s.substring(0, s.indexOf('.')));
 										Integer id2 = new Integer(s.substring(s.indexOf('.') + 1, s.length()));
-										motes.put(id1, id2);
+										motes.add(id1 + id2 * 256);
 									} catch (NumberFormatException e) {
 										continue lines;
 									} catch (StringIndexOutOfBoundsException e) {
@@ -224,28 +194,16 @@ class Listener extends Thread {
 							
 							// Check for mote removal (remove also from edges)
 							for (Mote sim_mote : sim.getMotes()) {
-								if (!motes.containsKey(sim_mote.getID())) {
+								if (!motes.contains(sim_mote.getID())) {
 									rs.rmMote(sim_mote.getID());
 								}
 							}
 							
-							for (Integer id : motes.keySet()) {
+							for (Integer id : motes) {
 								// Check if Mote already added to Simulation
-								MoteType moteT = null;
+								MoteTypeComboboxModel mtbm = (MoteTypeComboboxModel) default_node.getModel();
 								
-																
-								MoteType[] mt = sim.getMoteTypes();
-								
-								// Find MoteType
-								// TODO Make this configurable
-								for (int cnt = 0; cnt < mt.length; cnt++) {
-									moteT = mt[cnt];
-									if (moteT.getDescription().equals(default_node.getSelectedItem().toString()))
-										break;
-									;
-								}
-								
-								rs.addmote(id, moteT);
+								rs.addmote(id, mtbm.getSelectedMote());
 								
 							
 							}
@@ -297,7 +255,7 @@ class Listener extends Thread {
 							}
 						}
 					}
-					motes.clear();
+					
 				}
 			}
 		} catch (IOException e) {
