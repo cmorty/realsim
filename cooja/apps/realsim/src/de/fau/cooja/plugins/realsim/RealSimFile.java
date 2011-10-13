@@ -117,7 +117,11 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 						MoteTypeComboboxModel mtbm = (MoteTypeComboboxModel) default_node.getModel();
 						SimEvent se = new SimEventAddNode(time, strToId(t[2]), mtbm.getSelectedMote());
 						events.add(se);
-						
+					}
+					
+					else if (t[1].equals("rmnode")) {
+						SimEvent se = new SimEventRmNode(time, strToId(t[2]));
+						events.add(se);
 					}
 					
 					else if (t[1].equals("setedge")) {
@@ -127,6 +131,13 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 						double rssi = new Double(t[5]);
 						int lqi = new Integer(t[6]);
 						SimEvent se = new SimEventSetEdge(time, src, dst, ratio, rssi, lqi);
+						events.add((SimEvent)se);
+					}
+					
+					else if (t[1].equals("rmedge")) {
+						int src = strToId(t[2]);
+						int dst = strToId(t[3]);
+						SimEvent se = new SimEventRmEdge(time, src, dst);
 						events.add((SimEvent)se);
 					}
 					else {
@@ -211,6 +222,20 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 		
 	}
 	
+	class SimEventRmNode extends SimEvent {
+		int			id;
+		
+		public SimEventRmNode(int time, int id) {
+			super(time);
+			this.id = id;
+		}
+		
+		@Override
+		void action() {
+			rs.rmMote(id);
+		}
+	}
+	
 	class SimEventSetEdge extends SimEvent {
 		
 		RealSimEdge	rse;
@@ -227,6 +252,23 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 		@Override
 		void action() {
 			rs.setEdge(rse);
+		}
+	}
+	
+	class SimEventRmEdge extends SimEvent {
+		
+		RealSimEdge	rse;
+		
+		public SimEventRmEdge(int time, int src, int dst) {
+			super(time);
+			rse = new RealSimEdge(src, dst);
+			rse.dst = dst;
+			
+		}
+		
+		@Override
+		void action() {
+			rs.rmEdge(rse);
 		}
 		
 	}
