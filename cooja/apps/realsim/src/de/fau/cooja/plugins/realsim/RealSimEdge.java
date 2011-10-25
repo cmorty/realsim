@@ -26,20 +26,38 @@
  * 
  */
 
-
 package de.fau.cooja.plugins.realsim;
+
+import java.util.Collection;
+import java.util.Vector;
+
+import org.jdom.Element;
 
 import se.sics.cooja.radiomediums.AbstractRadioMedium;
 
 // Help class to manage edges
 public class RealSimEdge {
 	
-	public int	src;
-	public int	dst;
-	public double ratio = 1.0; /* Link success ratio (per packet). */
-	public double rssi = AbstractRadioMedium.SS_STRONG; /* RSSI */
-	public long delay = 0; /* EXPERIMENTAL: Propagation delay (us). */
-	public int lqi = 105;
+	public int		src		= -1;
+	public int		dst		= -1;
+	public double	ratio	= 1.0;								/*
+																 * Link success
+																 * ratio (per
+																 * packet).
+																 */
+	public double	rssi	= AbstractRadioMedium.SS_STRONG;	/* RSSI */
+	public long		delay	= 0;								/*
+																 * EXPERIMENTAL:
+																 * Propagation
+																 * delay (us).
+																 */
+	public int		lqi		= 105;
+	
+	public RealSimEdge(Collection<Element> configXML) {
+		if (!setConfigXML(configXML)) {
+			throw new IllegalArgumentException("RSE: src or dst not correctly set.");
+		}
+	}
 	
 	public RealSimEdge(int src, int dst) {
 		this.src = src;
@@ -54,13 +72,67 @@ public class RealSimEdge {
 		this.delay = delay;
 		this.lqi = lqi;
 	}
-
+	
+	Collection<Element> getConfigXML() {
+		Vector<Element> config = (Vector<Element>)getConfigXMLShort();
+		Element el;
+		
+		config.add(el = new Element("ratio"));
+		el.setText( Double.toString(ratio));
+		config.add(el = new Element("rssi"));
+		el.setText(Double.toString(rssi));
+		config.add(el = new Element("delay"));
+		el.setText(Long.toString(delay));
+		config.add(el = new Element("lqi"));
+		el.setText(Integer.toString(lqi));
+		return config;
+	}
+	
+	Collection<Element> getConfigXMLShort() {
+		Vector<Element> config = new Vector<Element>();
+		Element el;
+		config.add(el = new Element("src"));
+		el.setText(Integer.toString(src));
+		config.add(el = new Element("dst"));
+		el.setText(Integer.toString(dst));
+		return config;
+	}
+	
+	public boolean setConfigXML(Collection<Element> configXML) {
+		for (Element element : configXML) {
+			String name = element.getName().toLowerCase();
+			String value = element.getText();
+			
+			if (name.equals("src")) {
+				src = Integer.parseInt(value);
+			}
+			if (name.equals("dst")) {
+				dst = Integer.parseInt(value);
+			}
+			if (name.equals("ratio")) {
+				ratio = Double.parseDouble(value);
+			}
+			if (name.equals("rssi")) {
+				rssi = Double.parseDouble(value);
+			}
+			if (name.equals("delay")) {
+				delay = Long.parseLong(value);
+			}
+			if (name.equals("lqi")) {
+				lqi = Integer.parseInt(value);
+			}
+			
+		}
+		if (src == -1 || dst == -1)
+			return false;
+		return true;
+	}
 	
 	public boolean equals(RealSimEdge e) {
 		return (this.src == e.src && this.dst == e.dst) ? true : false;
 	}
 	
-	
-	//Todo
-	// if (ratio <= 0.0 || ratio > 1.0 || rssi > 90 || rssi <= 0 || lqi > 110 || lqi <= 0) {
+	// Todo
+	// if (ratio <= 0.0 || ratio > 1.0 || rssi > 90 || rssi <= 0 || lqi > 110 ||
+	// lqi <= 0) {
 }
