@@ -148,12 +148,12 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 						SimEvent se = new SimEventRmEdge(time, src, dst);
 						events.add((SimEvent) se);
 					} else {
-						System.out.println("Ignoring line " + ln);
+						logger.warn("Ignoring line " + ln);
 					}
 					
 				} catch (Exception e) {
 					// Continue with next line
-					System.out.println("Ignoring line " + ln);
+					logger.warn("Ignoring line " + ln, e);
 				}
 			}
 			
@@ -161,6 +161,7 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 			return;
 		}
 		sortEvents();
+		logger.info("RealSim imported " + events.size() + " events");
 	}
 	
 	protected void sortEvents() {
@@ -177,7 +178,7 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 			
 			Long larg = (Long) arg;
 			larg /= 1000; // Turn into ms
-			while ((evt = events.get(pos)).time <= larg) {
+			while (pos < events.size() && (evt = events.get(pos)).time <= larg) {
 				pos++;
 				if (evt.time < larg)
 					continue;
@@ -262,6 +263,7 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 			}
 		}
 		sortEvents();
+		logger.info("RealSim loaded " + events.size() + " events");
 		return true;
 	}
 	
@@ -395,7 +397,7 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 		public SimEventRmNode(int time, Collection<Element> configXML) {
 			super(time);
 			if (!setConfigXML(configXML)) {
-				throw new IllegalArgumentException("src or dst not set");
+				throw new IllegalArgumentException("id not set");
 			}
 		}
 		
@@ -497,7 +499,7 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 		public SimEventRmEdge(int time, Collection<Element> configXML) {
 			super(time);
 			if (!setConfigXML(configXML)) {
-				throw new IllegalArgumentException("src or dst not set");
+				throw new IllegalArgumentException("RSE not set");
 			}
 		}
 	}

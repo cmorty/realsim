@@ -69,6 +69,11 @@ import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JToggleButton;
+
+import org.apache.log4j.Logger;
+
+import de.fau.cooja.plugins.realsim.RealSim;
+import de.fau.cooja.plugins.realsim.RealSimFile;
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.GUI;
 import se.sics.cooja.Mote;
@@ -131,7 +136,7 @@ class Edge {
 }
 
 class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionListener {
-	
+	private static Logger	logger			= Logger.getLogger(SpringLayout.class);
 	enum Elength {
 		RSSI,
 		RSSI_max,
@@ -174,7 +179,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 	}
 	
 	public synchronized Node addNode(int id) {
-		System.out.println("Addn: " + id);
+		logger.info("Addn: " + id);
 		Node n;
 		n = getNode(id);
 		if(n != null) return n;
@@ -237,8 +242,11 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		}
 	}
 	
+	
 	public synchronized void removeUnsetEdges(){
-		for(Edge e : (ArrayList<Edge>)edges.clone()){ //Need to clone due to mod
+		@SuppressWarnings("unchecked")
+		ArrayList<Edge> clone = (ArrayList<Edge>)edges.clone();
+		for(Edge e : clone){ //Need to clone due to modification
 			if(!e.set){
 				removeEdge(e);
 			}
@@ -250,7 +258,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		if(e.co != null){
 			e.co.co = null;
 		}
-		System.out.println("Remove " + e.toString());
+		logger.info("Remove " + e.toString());
 		edges.remove(e);
 
 	}
@@ -263,7 +271,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		dnode = getNode(dst);
 		
 		if(snode == null || dnode == null){
-			System.out.println("FAIL!");
+			logger.error("Failed to find source ("+src+") or dest-node ("+dst+").");
 			return;
 		}
 		
@@ -318,7 +326,6 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		while (relaxer == me) {
 			relax();
 			repaint();
-			Visualizer v = (Visualizer) (sim.getGUI().getPlugin("Visualizer"));
 			try {
 				for (Node n : nodes) {
 					if (n != null && sim.getMoteWithID(n.id) != null) {
@@ -550,6 +557,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 @ClassDescription("Spring Layout")
 @PluginType(PluginType.SIM_STANDARD_PLUGIN)
 public class SpringLayout extends VisPlugin implements ActionListener, ItemListener, Observer {
+	private static Logger	logger			= Logger.getLogger(SpringLayout.class);
 	private static final long	serialVersionUID	= 1L;
 	
 	GraphPanel					panel;
@@ -701,14 +709,14 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 	}
 	
 	void updateEdges(){
-		System.out.println("updateEdge");
+		logger.info("updating edges");
 		panel.resetEdges();
 		for(DirectedGraphMedium.Edge e : radioMedium.getEdges()){
 			int src = e.source.getMote().getID();
 			int dst = e.superDest.radio.getMote().getID();
 			double rssi = ((DGRMDestinationRadio)e.superDest).signal;
 			double lqi = ((DGRMDestinationRadio)e.superDest).lqi;
-			System.out.println("SE " + src + " " + dst);
+			logger.info("Edge " + src + " " + dst);
 			panel.setEdge(src, dst, rssi, lqi);
 			
 		}
@@ -716,7 +724,7 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 	}
 	
 	void updateMotes(){
-		System.out.println("updateMotes");
+		logger.info("updating motes");
 		ArrayList<Node> nds = panel.getNodes();
 		
 		for(Mote m : sim.getMotes()){
@@ -737,12 +745,6 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 
 	@Override
 	public void update(Observable o, Object arg) {
-		
-		
-		System.out.println("Obs: " + o.toString() );
-		if(arg != null){
-			System.out.println("Arg: " + arg.toString()); 
-		}
 		
 		if(o == radioMedium.getRadioMediumObservable()){
 			updateEdges();

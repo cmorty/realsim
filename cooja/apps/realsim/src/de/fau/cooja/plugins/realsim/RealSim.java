@@ -1,5 +1,7 @@
 package de.fau.cooja.plugins.realsim;
 
+import org.apache.log4j.Logger;
+
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteType;
 import se.sics.cooja.Simulation;
@@ -9,6 +11,7 @@ import se.sics.cooja.radiomediums.DirectedGraphMedium;
 import se.sics.cooja.radiomediums.DirectedGraphMedium.Edge;
 
 public class RealSim {
+	private static Logger	logger			= Logger.getLogger(RealSim.class);
 	Simulation sim;
 	
 	RealSim(Simulation simu){
@@ -27,7 +30,7 @@ public class RealSim {
 	public boolean addmote(Integer id, MoteType mt){
 		
 		
-		System.out.println("Adding mote: " + id);
+		logger.info("Adding mote: " + id);
 		
 		if (sim.getMoteWithID(id) != null) {
 			return false;
@@ -111,7 +114,7 @@ public class RealSim {
 	
 	public void setEdge(RealSimEdge rse){
 		// Remove old existing edge
-		System.out.println("Setting edge: " + rse.src + " - " + rse.dst);
+		logger.info("Setting edge: " + rse.src + " - " + rse.dst);
 		DirectedGraphMedium rm = (DirectedGraphMedium) sim.getRadioMedium();
 		DGRMDestinationRadio dr;
 		
