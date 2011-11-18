@@ -1,5 +1,11 @@
 package de.fau.cooja.plugins.realsim;
 
+
+import java.util.ArrayList;
+import java.util.Observable;
+import java.util.Observer;
+
+
 import org.apache.log4j.Logger;
 
 import se.sics.cooja.Mote;
@@ -10,16 +16,18 @@ import se.sics.cooja.radiomediums.DGRMDestinationRadio;
 import se.sics.cooja.radiomediums.DirectedGraphMedium;
 import se.sics.cooja.radiomediums.DirectedGraphMedium.Edge;
 
-public class RealSim {
+public class RealSim implements Observer  {
 	private static Logger	logger			= Logger.getLogger(RealSim.class);
 	Simulation sim;
+	private ArrayList<RealSimEdge> delayedEdges = new ArrayList<RealSimEdge>();
+	
 	
 	RealSim(Simulation simu){
 		sim = simu;
 	}
 	
 	public void clear(){
-		while (sim.getMotesCount() > 0) {
+		while (sim.getMotesCountShadow() > 0) {
 			sim.removeMote(sim.getMote(0));
 		}
 	}
@@ -32,7 +40,7 @@ public class RealSim {
 		
 		logger.info("Adding mote: " + id);
 		
-		if (sim.getMoteWithID(id) != null) {
+		if (sim.getMoteWithIDShadow(id) != null) {
 			return false;
 		}
 		
@@ -49,7 +57,6 @@ public class RealSim {
 		
 		
 		//Add after everything is configured
-
 		sim.addMote(mote);
 
 
@@ -112,11 +119,27 @@ public class RealSim {
 	}
 	
 	
-	public void setEdge(RealSimEdge rse){
+	public boolean setEdge(RealSimEdge rse){
 		// Remove old existing edge
 		logger.info("Setting edge: " + rse.src + " - " + rse.dst);
 		DirectedGraphMedium rm = (DirectedGraphMedium) sim.getRadioMedium();
 		DGRMDestinationRadio dr;
+		
+		//Check whether the nodes are initialized.
+		
+		if(sim.getMoteWithID(rse.src) == null || sim.getMoteWithID(rse.dst) == null){
+			if(sim.getMoteWithIDShadow(rse.src) == null){
+				logger.error("Mote " + rse.src + " does not exist");
+				return false;
+			}
+			if(sim.getMoteWithIDShadow(rse.dst) == null){
+				logger.error("Mote " + rse.dst + " does not exist");
+				return false;
+			}
+			delayedEdges.add(rse);
+			return true;
+		}
+		
 		
 		Edge edge = rsEdge2Edge(rse);
 		
@@ -138,8 +161,26 @@ public class RealSim {
 		//TODO: Set delay
 		
 		rm.requestEdgeAnalysis(); //This just sets a flag as done by addEdge - No harm in doing it again
-
+		return true;
 		
+	}
+
+	@Override
+	public void update(Observable o, Object arg) {
+		 if (!(arg instanceof Mote)) {
+          return;
+		 }
+		 if(delayedEdges.size() == 0) return;
+		 
+		 ArrayList<RealSimEdge> old = delayedEdges;
+		 
+		 //Create new empty list, as the edges will be enqueued by setEdge
+		 delayedEdges = new ArrayList<RealSimEdge>(old.size());
+		 
+		 for(RealSimEdge rse : old){
+			 setEdge(rse);
+		 }
+		 
 	}
 	
 }

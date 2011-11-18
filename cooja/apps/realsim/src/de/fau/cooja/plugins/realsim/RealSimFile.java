@@ -24,6 +24,8 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
@@ -33,6 +35,7 @@ import se.sics.cooja.MoteType;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.VisPlugin;
+import se.sics.cooja.radiomediums.DirectedGraphMedium;
 
 @ClassDescription("RealSim File")
 @PluginType(PluginType.SIM_PLUGIN)
@@ -46,6 +49,7 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 	JButton			select_file		= new JButton("Open File");
 	JComboBox				default_node;
 	JButton			load			= new JButton("Import");
+	private final static String failmsg = "This Plugin needs a DGRM.";
 	
 	ArrayList<SimEvent>		events;
 	int						pos;
@@ -56,6 +60,14 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 	}
 	
 	public void startPlugin() {
+		
+		if (!(sim.getRadioMedium() instanceof DirectedGraphMedium)) {
+			JOptionPane.showMessageDialog(this, failmsg, "Unsufficiant environment", JOptionPane.WARNING_MESSAGE);
+			add(new JLabel(failmsg));
+			
+			return;
+		}
+		
 		// Do not start if we do not support the medium
 		sim.addMillisecondObserver(this);
 		sim.addObserver(this);

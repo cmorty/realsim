@@ -44,6 +44,8 @@ import java.util.ArrayList;
 import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JTextField;
@@ -66,6 +68,8 @@ public class RealSimLive extends VisPlugin implements ActionListener {
 	private static final long	serialVersionUID	= 4368807123350830772L;
 	protected Simulation		sim;
 	
+	private final static String failmsg = "This Plugin needs a DGRM.";
+	
 	ServerSocket				serverSocket;
 	public JPanel				controlPanel		= new JPanel();
 	JToggleButton				set_port			= new JToggleButton("Click to start with port:");
@@ -79,7 +83,12 @@ public class RealSimLive extends VisPlugin implements ActionListener {
 	
 	public void startPlugin() {
 		//Do not start if we do not support the medium
-		if(!(sim.getRadioMedium() instanceof DirectedGraphMedium)) return;
+		if (!(sim.getRadioMedium() instanceof DirectedGraphMedium)) {
+			JOptionPane.showMessageDialog(this, failmsg, "Unsufficiant environment", JOptionPane.WARNING_MESSAGE);
+			add(new JLabel(failmsg));
+			
+			return;
+		}
 		
 		default_node = new JComboBox(new MoteTypeComboboxModel(sim));
 		

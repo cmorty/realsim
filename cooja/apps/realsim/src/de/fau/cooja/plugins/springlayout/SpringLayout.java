@@ -59,33 +59,36 @@
 
 package de.fau.cooja.plugins.springlayout;
 
+
 import java.util.*;
-import java.util.List;
+
 
 import java.awt.*;
 import java.awt.event.*;
+import java.beans.PropertyVetoException;
 
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+
 import javax.swing.JToggleButton;
 
 import org.apache.log4j.Logger;
 
-import de.fau.cooja.plugins.realsim.RealSim;
-import de.fau.cooja.plugins.realsim.RealSimFile;
+
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.GUI;
 import se.sics.cooja.Mote;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.VisPlugin;
-import se.sics.cooja.plugins.*;
 import se.sics.cooja.radiomediums.DirectedGraphMedium;
 import se.sics.cooja.radiomediums.DGRMDestinationRadio;
 
 class Node {
-	int id;
+	int		id;
 	double	x;
 	double	y;
 	double	dx;
@@ -95,27 +98,27 @@ class Node {
 }
 
 class Edge {
-	Node	src;
-	Node	dst;
-	Edge    co = null;
-	double	rssi;
-	double	lqi;
-	boolean set = true;
-	static double rssi_max = 300;
-	static double lqi_max = 300;
+	Node			src;
+	Node			dst;
+	Edge			co			= null;
+	double			rssi;
+	double			lqi;
+	boolean			set			= true;
+	static double	rssi_max	= 300;
+	static double	lqi_max		= 300;
 	
 	public double len(GraphPanel.Elength el) {
-		switch(el){
+		switch (el) {
 			case RSSI:
 				return rssi;
 			case RSSI_max:
 				double omax;
-				omax = (co != null) ? co.rssi :  rssi_max;
+				omax = (co != null) ? co.rssi : rssi_max;
 				return Math.max(rssi, omax);
 			case LQI:
 				return lqi;
 			case LQI_max:
-				omax = (co != null) ? co.lqi :  lqi_max;
+				omax = (co != null) ? co.lqi : lqi_max;
 				return Math.max(lqi, omax);
 				
 		}
@@ -130,34 +133,24 @@ class Edge {
 		this.lqi = lqi;
 	}
 	
-
-	
-	
 }
 
 class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionListener {
-	private static Logger	logger			= Logger.getLogger(SpringLayout.class);
-	enum Elength {
-		RSSI,
-		RSSI_max,
-		LQI,
-		LQI_max
-	}
+	private static Logger	logger	= Logger.getLogger(SpringLayout.class);
 	
+	enum Elength {
+		RSSI, RSSI_max, LQI, LQI_max
+	}
 	
 	private static final long	serialVersionUID	= 1L;
 	public static Elength		view				= Elength.RSSI;
 	public static double		scale				= 1.0;
 	SpringLayout				graph;
-	private ArrayList<Node>				nodes				= new ArrayList<Node>();
-	private ArrayList<Edge>				edges				= new ArrayList<Edge>();
+	private ArrayList<Node>		nodes				= new ArrayList<Node>();
+	private ArrayList<Edge>		edges				= new ArrayList<Edge>();
 	Thread						relaxer;
 	Simulation					sim;
-	boolean changed = true;
-	
-
-	
-	
+	boolean						changed				= true;
 	
 	public GraphPanel(SpringLayout graph, Simulation sim) {
 		this.graph = graph;
@@ -165,31 +158,31 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		addMouseListener(this);
 	}
 	
+	// /////////////////
 	
-///////////////////
-	
-	protected Node getNode(int  id) {
+	protected Node getNode(int id) {
 		for (Node nd : nodes) {
-			if(nd.id == id) {
+			if (nd.id == id) {
 				return nd;
 			}
 		}
 		return null;
-		//return addNode(id);
+		// return addNode(id);
 	}
 	
 	public synchronized Node addNode(int id) {
 		logger.info("Addn: " + id);
 		Node n;
 		n = getNode(id);
-		if(n != null) return n;
+		if (n != null)
+			return n;
 		
 		n = new Node();
 		n.x = 10 + 380 * Math.random();
 		n.y = 10 + 380 * Math.random();
 		n.id = id;
-		n.lbl = ((Integer)id).toString();
-		//Fix first node
+		n.lbl = ((Integer) id).toString();
+		// Fix first node
 		if (nodes.size() == 0) {
 			n.fixed = true;
 			n.x = graph.getWidth() / 2;
@@ -200,25 +193,23 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		return n;
 	}
 	
-	public synchronized void removeNode(int id){
+	public synchronized void removeNode(int id) {
 		removeNode(getNode(id));
 	}
 	
-	public synchronized void removeNode(Node n){
+	public synchronized void removeNode(Node n) {
 		
-		//Get rid of the edges first.		
-		for(Edge e : edges){
-			if(e.src == n || e.dst == n){
+		// Get rid of the edges first.
+		for (Edge e : edges) {
+			if (e.src == n || e.dst == n) {
 				removeEdge(e);
 			}
 		}
 		nodes.remove(n);
 		
-		
 	}
 	
-	
-	public synchronized void shake(){
+	public synchronized void shake() {
 		for (Node n : nodes) {
 			if (!n.fixed) {
 				n.x += 80 * Math.random() - 40;
@@ -227,40 +218,35 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		}
 	}
 	
-	
-///////////////////7	
-	
+	// /////////////////7
 	
 	public Edge[] getEdges() {
-		return  edges.toArray(new  Edge[0]);
+		return edges.toArray(new Edge[0]);
 	}
 	
-	
-	public synchronized void resetEdges(){
-		for(Edge e : edges){
+	public synchronized void resetEdges() {
+		for (Edge e : edges) {
 			e.set = false;
 		}
 	}
 	
-	
-	public synchronized void removeUnsetEdges(){
+	public synchronized void removeUnsetEdges() {
 		@SuppressWarnings("unchecked")
-		ArrayList<Edge> clone = (ArrayList<Edge>)edges.clone();
-		for(Edge e : clone){ //Need to clone due to modification
-			if(!e.set){
+		ArrayList<Edge> clone = (ArrayList<Edge>) edges.clone();
+		for (Edge e : clone) { // Need to clone due to modification
+			if (!e.set) {
 				removeEdge(e);
 			}
 		}
 	}
 	
-	
 	public synchronized void removeEdge(Edge e) {
-		if(e.co != null){
+		if (e.co != null) {
 			e.co.co = null;
 		}
 		logger.info("Remove " + e.toString());
 		edges.remove(e);
-
+		
 	}
 	
 	public synchronized void setEdge(int src, int dst, double rssi, double lqi) {
@@ -270,25 +256,24 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		snode = getNode(src);
 		dnode = getNode(dst);
 		
-		if(snode == null || dnode == null){
-			logger.error("Failed to find source ("+src+") or dest-node ("+dst+").");
+		if (snode == null || dnode == null) {
+			logger.error("Failed to find source (" + src + ") or dest-node (" + dst + ").");
 			return;
 		}
 		
-		for(Edge te : edges){
-			if(te.src == snode && te.dst == dnode){
+		for (Edge te : edges) {
+			if (te.src == snode && te.dst == dnode) {
 				e = te;
 			}
 		}
-	
 		
-		if(e == null){
+		if (e == null) {
 			e = new Edge();
 			e.src = snode;
-			e.dst = dnode;			
+			e.dst = dnode;
 			edges.add(e);
 			Edge te = getEdge(dst, src);
-			if(te != null){
+			if (te != null) {
 				e.co = te;
 				te.co = e;
 			}
@@ -301,9 +286,9 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		
 	}
 	
-	protected synchronized Edge getEdge(int src, int dst){
-		for(Edge ed : edges){
-			if(ed.src.id == src && ed.dst.id == dst){
+	protected synchronized Edge getEdge(int src, int dst) {
+		for (Edge ed : edges) {
+			if (ed.src.id == src && ed.dst.id == dst) {
 				return ed;
 			}
 		}
@@ -311,15 +296,13 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		return null;
 	}
 	
-
-	
 	public ArrayList<Node> getNodes() {
 		@SuppressWarnings("unchecked")
-		ArrayList<Node> clone = (ArrayList<Node>)  nodes.clone();
+		ArrayList<Node> clone = (ArrayList<Node>) nodes.clone();
 		return clone;
 	}
 	
-	///////////////////////////////////////////////////////////////////
+	// /////////////////////////////////////////////////////////////////
 	
 	public void run() {
 		Thread me = Thread.currentThread();
@@ -354,7 +337,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 			double f = (edges.get(i).len(view) - len) / (len * 3);
 			double dx = f * vx;
 			double dy = f * vy;
-			//I-Regler
+			// I-Regler
 			e.dst.dx += dx;
 			e.dst.dy += dy;
 			e.src.dx += -dx;
@@ -469,14 +452,14 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 			offgraphics.drawLine(x1, y1, x2, y2);
 			offgraphics.drawString(String.valueOf(e.len(view)), x1 + (x2 - x1) / 2, y1 + (y2 - y1) / 2);
 			offgraphics.setColor(edgeColor);
-			//repaint();
+			// repaint();
 		}
 		
 		FontMetrics fm = offgraphics.getFontMetrics();
 		for (int i = 0; i < nodes.size(); i++) {
 			paintNode(offgraphics, nodes.get(i), fm);
 		}
-		//System.out.println("Update");
+		// System.out.println("Update");
 		g.drawImage(offscreen, 0, 0, null);
 	}
 	
@@ -545,20 +528,19 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		relaxer.start();
 	}
 	
-	
-	public void stop() {		
+	public void stop() {
 		relaxer = null;
 	}
-	
-
 	
 }
 
 @ClassDescription("Spring Layout")
-@PluginType(PluginType.SIM_STANDARD_PLUGIN)
+@PluginType(PluginType.SIM_PLUGIN)
 public class SpringLayout extends VisPlugin implements ActionListener, ItemListener, Observer {
-	private static Logger	logger			= Logger.getLogger(SpringLayout.class);
-	private static final long	serialVersionUID	= 1L;
+	private static Logger		logger				= Logger.getLogger(SpringLayout.class);
+	
+	private final static String failmsg = "This Plugin needs a DGRM.";
+	
 	
 	GraphPanel					panel;
 	JPanel						controlPanel;
@@ -567,17 +549,18 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 	
 	Button						clear				= new Button("Clear");
 	Button						shake				= new Button("Shake");
-	ComboBoxItem [] comboBoxItems = {new ComboBoxItem("RSSI", GraphPanel.Elength.RSSI),
-			new ComboBoxItem("RSSI (Max)", GraphPanel.Elength.RSSI_max),
-			new ComboBoxItem("LQI", GraphPanel.Elength.LQI),
-			new ComboBoxItem("LQI (Max)", GraphPanel.Elength.LQI_max)};
+	ComboBoxItem[]				comboBoxItems		= { new ComboBoxItem("RSSI", GraphPanel.Elength.RSSI),
+			new ComboBoxItem("RSSI (Max)", GraphPanel.Elength.RSSI_max), new ComboBoxItem("LQI", GraphPanel.Elength.LQI),
+			new ComboBoxItem("LQI (Max)", GraphPanel.Elength.LQI_max) };
 	
-	JComboBox						layout = new JComboBox(comboBoxItems);
+	JComboBox					layout				= new JComboBox(comboBoxItems);
 	Button						zoom_in				= new Button("+");
 	Button						zoom_out			= new Button("-");
 	
 	JToggleButton				pause				= new JToggleButton("Pause");
 	JToggleButton				max_min				= new JToggleButton("Avrg View");
+	
+	
 	
 	class ComboBoxItem {
 		
@@ -598,20 +581,27 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 		}
 	}
 	
-	int edgeHash;
-	int moteHash;
+	int	edgeHash;
+	int	moteHash;
 	
-	
-	
-	public SpringLayout(Simulation sim, GUI gui) {
+	public SpringLayout(Simulation sim,  GUI gui) throws Exception {
 		super("SpringLayout", gui);
+		
 		this.sim = sim;
-		this.radioMedium = (DirectedGraphMedium) sim.getRadioMedium();
-		this.init();
-		this.start();
+		
 	}
 	
-	public void init() {
+	public void startPlugin() {
+		
+		if (!(sim.getRadioMedium() instanceof DirectedGraphMedium)) {
+			JOptionPane.showMessageDialog(this, failmsg, "Unsufficiant environment", JOptionPane.WARNING_MESSAGE);
+			add(new JLabel(failmsg));
+			
+			return;
+		}
+		
+		this.radioMedium = (DirectedGraphMedium) sim.getRadioMedium();
+		
 		panel = new GraphPanel(this, this.sim);
 		add("Center", panel);
 		controlPanel = new JPanel();
@@ -622,7 +612,7 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 		shake.addActionListener(this);
 		controlPanel.add(layout);
 		layout.addActionListener(this);
-
+		
 		controlPanel.add(zoom_in);
 		zoom_in.addActionListener(this);
 		controlPanel.add(zoom_out);
@@ -639,15 +629,15 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 		updateUI();
 		repaint();
 		
-		//Update Motes first!
-
+		// Update Motes first!
+		
 		updateMotes();
 		updateEdges();
-		//Register observers
+		// Register observers
 		radioMedium.addRadioMediumObserver(this);
 		sim.addObserver(this);
-
 		
+		this.start();
 		
 	}
 	
@@ -667,8 +657,8 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 	public void actionPerformed(ActionEvent e) {
 		Object src = e.getSource();
 		if (src == clear) {
-			//panel.nodes.clear();
-			//panel.edges.clear();
+			// panel.nodes.clear();
+			// panel.edges.clear();
 			return;
 		}
 		if (src == shake) {
@@ -684,10 +674,10 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 				repaint();
 			}
 		}
-		if(src == layout){
+		if (src == layout) {
 			GraphPanel.view = ((ComboBoxItem) layout.getSelectedItem()).getKey();
 		}
-
+		
 		if (src == zoom_in) {
 			GraphPanel.scale += 0.1;
 			repaint();
@@ -708,14 +698,14 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 		
 	}
 	
-	void updateEdges(){
+	void updateEdges() {
 		logger.info("updating edges");
 		panel.resetEdges();
-		for(DirectedGraphMedium.Edge e : radioMedium.getEdges()){
+		for (DirectedGraphMedium.Edge e : radioMedium.getEdges()) {
 			int src = e.source.getMote().getID();
 			int dst = e.superDest.radio.getMote().getID();
-			double rssi = ((DGRMDestinationRadio)e.superDest).signal;
-			double lqi = ((DGRMDestinationRadio)e.superDest).lqi;
+			double rssi = ((DGRMDestinationRadio) e.superDest).signal;
+			double lqi = ((DGRMDestinationRadio) e.superDest).lqi;
 			logger.info("Edge " + src + " " + dst);
 			panel.setEdge(src, dst, rssi, lqi);
 			
@@ -723,14 +713,14 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 		panel.removeUnsetEdges();
 	}
 	
-	void updateMotes(){
+	void updateMotes() {
 		logger.info("updating motes");
 		ArrayList<Node> nds = panel.getNodes();
 		
-		for(Mote m : sim.getMotes()){
+		for (Mote m : sim.getMotes()) {
 			Node nd;
 			nd = panel.getNode(m.getID());
-			if(nd == null){ //Mote does not exist -> Add
+			if (nd == null) { // Mote does not exist -> Add
 				panel.addNode(m.getID());
 			} else { // Mote exists -> Do net remove it later
 				nds.remove(nd);
@@ -738,23 +728,21 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 			
 		}
 		
-		for(Node n : nds){
+		for (Node n : nds) {
 			panel.removeNode(n);
 		}
 	}
-
+	
 	@Override
 	public void update(Observable o, Object arg) {
 		
-		if(o == radioMedium.getRadioMediumObservable()){
+		if (o == radioMedium.getRadioMediumObservable()) {
 			updateEdges();
 		}
-		if(o == sim){
+		if (o == sim) {
 			updateMotes();
 			
 		}
 		
-		
 	}
 }
-
