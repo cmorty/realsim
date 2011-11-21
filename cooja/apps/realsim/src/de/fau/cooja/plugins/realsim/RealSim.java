@@ -27,9 +27,15 @@ public class RealSim implements Observer  {
 	}
 	
 	public void clear(){
-		while (sim.getMotesCountShadow() > 0) {
-			sim.removeMote(sim.getMote(0));
+		for(Mote m : sim.getMotes()) {
+			rmMote(m.getID());
 		}
+	}
+	
+	private boolean moteExists(int id){
+		if (sim.getMoteWithID(id) != null) return true; 
+		if (sim.getMoteWithIDUninit(id) != null) return true;
+		return false;
 	}
 	
 	
@@ -40,7 +46,7 @@ public class RealSim implements Observer  {
 		
 		logger.info("Adding mote: " + id);
 		
-		if (sim.getMoteWithIDShadow(id) != null) {
+		if (moteExists(id)) {
 			return false;
 		}
 		
@@ -125,14 +131,13 @@ public class RealSim implements Observer  {
 		DirectedGraphMedium rm = (DirectedGraphMedium) sim.getRadioMedium();
 		DGRMDestinationRadio dr;
 		
-		//Check whether the nodes are initialized.
-		
+		//Check whether the nodes are initialized
 		if(sim.getMoteWithID(rse.src) == null || sim.getMoteWithID(rse.dst) == null){
-			if(sim.getMoteWithIDShadow(rse.src) == null){
+			if(!moteExists(rse.src)){
 				logger.error("Mote " + rse.src + " does not exist");
 				return false;
 			}
-			if(sim.getMoteWithIDShadow(rse.dst) == null){
+			if(!moteExists(rse.dst)){
 				logger.error("Mote " + rse.dst + " does not exist");
 				return false;
 			}
