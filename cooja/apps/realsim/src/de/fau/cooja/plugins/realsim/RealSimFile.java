@@ -42,16 +42,18 @@ import se.sics.cooja.radiomediums.DirectedGraphMedium;
 public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 	
 	private static Logger	logger			= Logger.getLogger(RealSimFile.class);
-	protected Simulation	sim;
+	protected static Simulation	sim;
+	
 	RealSim					rs;
 	public JPanel			controlPanel	= new JPanel();
 	JTextField				filename		= new JTextField("/home/inf4/morty/tmp/rsdump");
 	JButton			select_file		= new JButton("Open File");
 	JComboBox				default_node;
 	JButton			load			= new JButton("Import");
+	
 	private final static String failmsg = "This Plugin needs a DGRM.";
 	
-	ArrayList<SimEvent>		events;
+	ArrayList<SimEvent>		events = new ArrayList<SimEvent>(); //Make sure there is an empty list.
 	int						pos;
 	
 	public RealSimFile(Simulation simulation, GUI gui) {
@@ -62,9 +64,11 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 	public void startPlugin() {
 		
 		if (!(sim.getRadioMedium() instanceof DirectedGraphMedium)) {
-			JOptionPane.showMessageDialog(this, failmsg, "Unsufficiant environment", JOptionPane.WARNING_MESSAGE);
-			add(new JLabel(failmsg));
-			
+			logger.error(failmsg);
+			if(GUI.isVisualized()){
+				JOptionPane.showMessageDialog(this, failmsg, "Unsufficiant environment", JOptionPane.WARNING_MESSAGE);
+				add(new JLabel(failmsg));
+			}
 			return;
 		}
 		
