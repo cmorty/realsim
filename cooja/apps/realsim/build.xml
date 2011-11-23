@@ -14,7 +14,7 @@
 		<mkdir dir="lib"/>
 	</target>
 
-	<target name="compile" depends="init, jar_cooja">
+	<target name="compile" depends="init">
 		<mkdir dir="build"/>
 		<javac srcdir="src" destdir="build" debug="on"
   			includeantruntime="false">
