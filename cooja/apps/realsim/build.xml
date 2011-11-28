@@ -32,7 +32,7 @@
 		<delete dir="lib"/>
 	</target>
 
-	<target name="jar" depends="clean, init, compile">
+	<target name="jar" depends="init, compile">
 		<mkdir dir="lib"/>
 		<jar destfile="lib/realsim.jar" basedir="build">
 			<manifest>
