@@ -19,7 +19,9 @@
       se.sics.cooja.mspmote.SkyMoteType
       <identifier>sky1</identifier>
       <description>Sky Mote Type #sky1</description>
-      <firmware EXPORT="copy">[CONFIG_DIR]/mig_client.sky</firmware>
+      <source>[CONTIKI_DIR]/examples/hello-world/hello-world.c</source>
+      <commands>make hello-world.sky TARGET=sky</commands>
+      <firmware>[CONTIKI_DIR]/examples/hello-world/hello-world.sky</firmware>
       <moteinterface>se.sics.cooja.interfaces.Position</moteinterface>
       <moteinterface>se.sics.cooja.interfaces.RimeAddress</moteinterface>
       <moteinterface>se.sics.cooja.interfaces.IPAddress</moteinterface>
