@@ -1,0 +1,26 @@
+Source: cooja-gdbstub
+Section: net
+Priority: extra
+Maintainer: Moritz 'Morty' Strübe <morty@cs.fau.de>
+Build-Depends:
+ debhelper (>= 7.0.50~),
+ default-jdk,
+ ant,
+ cooja,
+ cooja-mspsim
+Build-Conflicts:
+Standards-Version: 3.9.1.0
+Homepage: http://i4git.informatik.uni-erlangen.de/contiki_projects.git/shortlog/refs/heads/gdbstub
+Vcs-Git: git://i4git.informatik.uni-erlangen.de/contiki_projects.git
+Vcs-Browser: http://i4git.informatik.uni-erlangen.de/contiki_projects.git/shortlog/refs/heads/gdbstub
+
+Package: cooja-gdbstub
+Architecture: all
+Depends:
+ cooja,
+ cooja-mspsim,
+ ${misc:Depends},	
+Description: GDBStub for the Cooja Simulator
+ Allows to connect to a msp-based mote using gdb
+
+

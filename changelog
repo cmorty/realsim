@@ -1,0 +1,5 @@
+cooja-gdbstub (1.0) unstable; urgency=low
+
+  * Initial packaging
+
+ -- Moritz 'Morty' Strübe <morty@cs.fau.de>  Wed, 07 Dec 2011 17:10:04 +0100
