@@ -2,11 +2,9 @@
 # -*- makefile -*-
 
 # Uncomment this to turn on verbose mode.
-export DH_VERBOSE=1
+# export DH_VERBOSE=1
 
 export ANT_OPTS+="-Dcooja_jar=/usr/share/cooja/cooja.jar"
-export ANT_OPTS+="-Dmspsim_jar=/usr/share/cooja/apps/mspsim/mspsim.jar"
-export ANT_OPTS+="-Dcooja_mspsim_jar=/usr/share/cooja/apps/mspsim/cooja_mspsim.jar"
 
 %:
 	dh $@ 

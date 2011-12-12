@@ -1,2 +1,2 @@
-cooja.config	/usr/share/cooja/apps/gdbstub
-lib/*			/usr/share/cooja/apps/gdbstub
+cooja.config	/usr/share/cooja/apps/realsim
+lib/*			/usr/share/cooja/apps/realsim
