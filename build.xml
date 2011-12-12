@@ -5,8 +5,6 @@
 	<property name="javadoc" location="javadoc"/>
 
 	<property name="cooja_jar" value="${cooja}/dist/cooja.jar"/>
-	<property name="mspsim_jar" value="${cooja}/apps/mspsim/lib/mspsim.jar"/>
-	<property name="cooja_mspsim_jar" value="${cooja}/apps/mspsim/lib/cooja_mspsim.jar"/>
 
 	<target name="init">
 		<tstamp/>
@@ -21,8 +19,6 @@
 			<classpath>
 				<pathelement path="."/>
 				<pathelement location="${cooja_jar}"/>
-				<pathelement location="${mspsim_jar}"/>
-				<pathelement location="${cooja_mspsim_jar}"/>
 			</classpath>
 		</javac>
 	</target>
