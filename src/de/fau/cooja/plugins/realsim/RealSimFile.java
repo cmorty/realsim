@@ -10,7 +10,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -151,8 +150,8 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 					else if (t[1].equals("setedge")) {
 						int src = strToId(t[2]);
 						int dst = strToId(t[3]);
-						double ratio = (new Double(t[4])) / 100;
-						double rssi = new Double(t[5]);
+						double ratio = (new Double(t[4].replace(',', '.'))) / 100;
+						double rssi = new Double(t[5].replace(',', '.'));
 						int lqi = new Integer(t[6]);
 						SimEvent se = new SimEventSetEdge(time, src, dst, ratio, rssi, lqi);
 						events.add((SimEvent) se);
@@ -499,7 +498,7 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 		
 		public boolean setConfigXML(Collection<Element> configXML) {
 			for (Element element : configXML) {
-				String name = element.getName().toLowerCase();
+				String name = element.getName().toUpperCase();
 				if (name.equals("RSE")) {
 					@SuppressWarnings("unchecked")
 					Collection<Element> children = element.getChildren();

@@ -65,7 +65,6 @@ import java.util.*;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.beans.PropertyVetoException;
 
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
@@ -110,11 +109,11 @@ class Edge {
 	public double len(GraphPanel.Elength el) {
 		switch (el) {
 			case RSSI:
-				return rssi;
+				return -rssi;
 			case RSSI_max:
 				double omax;
 				omax = (co != null) ? co.rssi : rssi_max;
-				return Math.max(rssi, omax);
+				return -Math.min(rssi, omax);
 			case LQI:
 				return lqi;
 			case LQI_max:
@@ -122,6 +121,24 @@ class Edge {
 				return Math.max(lqi, omax);
 				
 		}
+		throw new IllegalArgumentException();
+	}
+	
+	public String text(GraphPanel.Elength el) {
+		String rv = null;
+		switch (el) {
+			case RSSI:
+			case RSSI_max:
+				rv = new Integer((int) rssi).toString() + " / ";
+				rv += (co != null) ? new Integer((int) co.rssi).toString() : "None";
+			case LQI:
+			case LQI_max:
+				rv = new Integer((int) lqi).toString() + " / ";
+				rv += (co != null) ? new Integer((int) co.lqi).toString() : "None";
+				
+		}
+		
+		if(rv != null) return rv;
 		throw new IllegalArgumentException();
 	}
 	
@@ -447,12 +464,14 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 			int y1 = (int) e.src.y;
 			int x2 = (int) e.dst.x;
 			int y2 = (int) e.dst.y;
+			if(x1 > x2 || (x1== x2 && y1 > y2)) continue;
+			
+			
 			int len = (int) Math.abs(Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2)) - e.len(view));
 			offgraphics.setColor((len < 10) ? arcColor1 : (len < 20 ? arcColor2 : arcColor3));
 			offgraphics.drawLine(x1, y1, x2, y2);
-			offgraphics.drawString(String.valueOf(e.len(view)), x1 + (x2 - x1) / 2, y1 + (y2 - y1) / 2);
+			offgraphics.drawString(String.valueOf(e.text(view)), x1 + (x2 - x1) / 2, y1 + (y2 - y1) / 2);
 			offgraphics.setColor(edgeColor);
-			// repaint();
 		}
 		
 		FontMetrics fm = offgraphics.getFontMetrics();
@@ -549,8 +568,10 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 	
 	Button						clear				= new Button("Clear");
 	Button						shake				= new Button("Shake");
-	ComboBoxItem[]				comboBoxItems		= { new ComboBoxItem("RSSI", GraphPanel.Elength.RSSI),
-			new ComboBoxItem("RSSI (Max)", GraphPanel.Elength.RSSI_max), new ComboBoxItem("LQI", GraphPanel.Elength.LQI),
+	ComboBoxItem[]				comboBoxItems		= { 
+			new ComboBoxItem("RSSI", GraphPanel.Elength.RSSI),
+			new ComboBoxItem("RSSI (Max)", GraphPanel.Elength.RSSI_max), 
+			new ComboBoxItem("LQI", GraphPanel.Elength.LQI),
 			new ComboBoxItem("LQI (Max)", GraphPanel.Elength.LQI_max) };
 	
 	JComboBox					layout				= new JComboBox(comboBoxItems);

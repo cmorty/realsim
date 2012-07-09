@@ -20,11 +20,20 @@ public class RealSim implements Observer  {
 	private static Logger	logger			= Logger.getLogger(RealSim.class);
 	Simulation sim;
 	private ArrayList<RealSimEdge> delayedEdges = new ArrayList<RealSimEdge>();
+  
 	
 	
 	RealSim(Simulation simu){
 		sim = simu;
 	}
+	
+	
+	private String idOut(int id){
+		Integer i = new Integer(id);
+		return i.toString() + " (" + Integer.toHexString(id) + ")";
+	}
+	
+	
 	
 	public void clear(){
 		for(Mote m : sim.getMotes()) {
@@ -105,6 +114,9 @@ public class RealSim implements Observer  {
 		return null;
 	}
 	
+	public boolean rmEdge(int src, int dst){
+		return rmEdge(new RealSimEdge(src, dst));
+	}
 	
 	public boolean rmEdge(RealSimEdge rse){
 		DirectedGraphMedium rm = (DirectedGraphMedium) sim.getRadioMedium();
@@ -127,7 +139,9 @@ public class RealSim implements Observer  {
 	
 	public boolean setEdge(RealSimEdge rse){
 		// Remove old existing edge
-		logger.info("Setting edge: " + rse.src + " - " + rse.dst);
+		
+		
+		logger.info("Setting edge: " + idOut(rse.src) + " - " + idOut(rse.dst));
 		DirectedGraphMedium rm = (DirectedGraphMedium) sim.getRadioMedium();
 		DGRMDestinationRadio dr;
 		
