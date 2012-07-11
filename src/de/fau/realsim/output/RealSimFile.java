@@ -13,6 +13,14 @@ public class RealSimFile implements PacketOutput{
 	
 	
 	
+	public static String getName() {
+		return "rs";
+	}
+
+	
+	public static String getHelp() {
+		return "Data that can be imported using Realsim";
+	}
 	
 	public boolean output(AnalyzedData anl, OutputStream os, int start, int end){
 		PrintStream out = new PrintStream(os);
@@ -60,4 +68,11 @@ public class RealSimFile implements PacketOutput{
 		}
 		return true;
 	}
+
+	@Override
+	public boolean output(AnalyzedData anl, OutputStream os) {
+		return output(anl, os, 0, Integer.MAX_VALUE);
+	}
+
+
 }

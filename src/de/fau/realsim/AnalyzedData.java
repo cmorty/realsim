@@ -24,7 +24,7 @@ public class AnalyzedData {
 	WeakHashMap<DataPacket, Integer> normalized_time = new WeakHashMap<DataPacket, Integer>(); 
 	
 	private static Logger logger = Logger.getLogger(AnalyzedData.class);
-	final DataPacket[] origdata;
+	public final DataPacket[] origdata;
 	private DataPacket[] data = null;
 	private HashMap<Integer, NodeData> nodedata = null; //Datapackets by Node
 	public int packet_first_last; //Last "first" packet (normalized time)
@@ -272,6 +272,13 @@ public class AnalyzedData {
 	
 	public String getStats(){
 		StringBuilder rv = new StringBuilder();
+		if(nodedata == null){
+			rv.append("No Data available.\n");
+			return rv.toString();
+			
+		}
+		
+		
 		rv.append("\nGeneral stats\n=============\n");
 		rv.append("\tSink Reboots:    " + sinkreboot + "\n");
 		rv.append("Last first packet: " + packet_first_last + "\n" );

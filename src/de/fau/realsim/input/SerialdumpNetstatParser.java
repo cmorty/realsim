@@ -8,6 +8,17 @@ public class SerialdumpNetstatParser extends NetstatParser {
 		super(dph);
 	}
 	
+	
+	static public String getName() {
+		return "netDump";
+	}
+
+	
+	static public String getHelp() {
+		return "Data Provided by NetStat using serialdump";
+	}
+	
+	
 	public void parse (String data){
 		String lines[] = data.split("\\r?\\n");
 		for(String line: lines){

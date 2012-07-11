@@ -11,7 +11,9 @@ import de.fau.realsim.input.NetstatParser;
 
 public class RealSimClient implements Runnable{
 	private static Logger logger = Logger.getLogger(RealSimClient.class);
-	public Integer port = new Integer(1337);
+	
+	public final static Integer defaultport = new Integer(1337);
+	public Integer port = defaultport;
 	ServerSocket ls;
 	Socket s;
 	

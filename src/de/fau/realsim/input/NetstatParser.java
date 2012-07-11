@@ -14,7 +14,14 @@ public class NetstatParser extends PacketInput {
 		super(dph);
 	}	
 	
+	public static String getName() {
+		return "net";
+	}
 
+	
+	public static String getHelp() {
+		return "Data Provided by NetStat";
+	}
 	
 	public boolean receivingDatapacket(){
 		return dp != null;
@@ -72,5 +79,9 @@ public class NetstatParser extends PacketInput {
 			}
 		}
 	}
+
+
+
+
 	
 }

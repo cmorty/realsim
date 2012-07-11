@@ -9,6 +9,16 @@ import de.fau.realsim.DataPacket;
 
 public class SerializedOutput implements PacketOutput{
 
+	
+	public static String getName() {
+		return "ser";
+	}
+
+	
+	public static String getHelp() {
+		return "Serialized Data";
+	}
+	
 	@Override
 	public boolean output(AnalyzedData anl, OutputStream os, int start, int end) {
 		DataPacket[] pkts = anl.getPackets();
@@ -28,6 +38,13 @@ public class SerializedOutput implements PacketOutput{
 		}
 		return true;
 	}
+
+	@Override
+	public boolean output(AnalyzedData anl, OutputStream os) {
+		return output(anl, os, 0, Integer.MAX_VALUE);
+	}
+
+
 	
 	
 }

@@ -12,6 +12,14 @@ public class SerializedInput extends PacketInput{
 		super(dph);
 		// TODO Auto-generated constructor stub
 	}
+	
+	static public String getName() {
+		return "ser";
+	}
+
+	static public String getHelp() {
+		return "Data Dumped using serialization";
+	}
 
 	public void parse (InputStream in){
 		ObjectInputStream o;

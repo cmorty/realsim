@@ -14,6 +14,9 @@ public abstract class PacketInput {
 		this.dph = dph;
 	}
 	
+	public  static String getName() {return "An error";};
+	public  static String getHelp() {return "An error";};
+	
 	
 	public void parse (InputStream in){
 		BufferedReader br = new BufferedReader(new InputStreamReader(in));
