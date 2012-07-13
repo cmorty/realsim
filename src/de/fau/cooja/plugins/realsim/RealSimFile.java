@@ -15,8 +15,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Observable;
-import java.util.Observer;
 import java.util.Vector;
 
 import javax.swing.JButton;
@@ -33,12 +31,13 @@ import se.sics.cooja.GUI;
 import se.sics.cooja.MoteType;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
+import se.sics.cooja.TimeEvent;
 import se.sics.cooja.VisPlugin;
 import se.sics.cooja.radiomediums.DirectedGraphMedium;
 
 @ClassDescription("RealSim File")
 @PluginType(PluginType.SIM_PLUGIN)
-public class RealSimFile extends VisPlugin implements ActionListener, Observer {
+public class RealSimFile extends VisPlugin implements ActionListener {
 	
 	private static Logger	logger			= Logger.getLogger(RealSimFile.class);
 	protected static Simulation	sim;
@@ -49,6 +48,7 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 	JButton			select_file		= new JButton("Open File");
 	JComboBox				default_node;
 	JButton			load			= new JButton("Import");
+	GUI gui;
 	
 	private final static String failmsg = "This Plugin needs a DGRM.";
 	
@@ -58,6 +58,7 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 	public RealSimFile(Simulation simulation, GUI gui) {
 		super("RealSim File", gui, false);
 		sim = simulation;
+		this.gui = gui;
 	}
 	
 	public void startPlugin() {
@@ -71,9 +72,6 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 			return;
 		}
 		
-		// Do not start if we do not support the medium
-		sim.addMillisecondObserver(this);
-		sim.addObserver(this);
 		
 		default_node = new JComboBox(new MoteTypeComboboxModel(sim));
 		
@@ -88,7 +86,7 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 		
 		controlPanel.add(default_node);
 		
-		rs = new RealSim(sim);
+		rs = new RealSim(sim, gui);
 		SimEvent.setRs(rs);
 		
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -177,31 +175,44 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 		}
 		sortEvents();
 		logger.info("RealSim imported " + events.size() + " events");
+		//Register event
+		eventShed.remove();
+		sim.scheduleEvent(eventShed,sim.getSimulationTime());
+		logger.info("Registered Event for: " + sim.getSimulationTime() );
 	}
 	
 	protected void sortEvents() {
 		Collections.sort(events, new SimEventComperator());
 	}
 	
-	@Override
-	public void update(Observable o, Object arg) {
-		
-		if (arg instanceof Long) {
-			if (events == null)
-				return;
-			SimEvent evt;
+	private TimeEvent eventShed = new TimeEvent(0) {
+	    public void execute(long time) {
+	    	if (events == null) return;
 			
-			Long larg = (Long) arg;
-			larg /= 1000; // Turn into ms
-			while (pos < events.size() && (evt = events.get(pos)).time <= larg) {
+			time /= Simulation.MILLISECOND; // Turn into ms
+			while (pos < events.size()) {
+				SimEvent evt = events.get(pos);
+				if(evt.time > time){
+					//Reshedule
+					logger.info("Resheduled for " + (evt.time * Simulation.MILLISECOND) );
+					sim.scheduleEvent(this,evt.time * Simulation.MILLISECOND);
+					break;
+				}
+				
 				pos++;
-				if (evt.time < larg)
+				if (evt.time < time){
+					logger.info("Dropping RealSimEvent:" + evt.toString() + " @  " + evt.time);
 					continue;
+				}
 				evt.action();
 			}
-		}
-		
-	}
+			
+	    }
+
+	      
+	};
+	  
+	 
 	
 	public Collection<Element> getConfigXML() {
 		Vector<Element> config = new Vector<Element>();
@@ -279,6 +290,8 @@ public class RealSimFile extends VisPlugin implements ActionListener, Observer {
 		}
 		sortEvents();
 		logger.info("RealSim loaded " + events.size() + " events");
+		sim.scheduleEvent(eventShed,sim.getSimulationTime());
+		logger.info("Registered Event for: " + sim.getSimulationTime() );
 		return true;
 	}
 	

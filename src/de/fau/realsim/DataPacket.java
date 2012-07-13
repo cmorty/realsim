@@ -20,7 +20,7 @@ public class DataPacket implements Serializable{
 	/** Configred intercal */
 	public final int interv;
 	/** Host Timestamp */
-	public final int hts;
+	public final long hts;
 	
 	
 	
@@ -37,7 +37,7 @@ public class DataPacket implements Serializable{
 		id = id_;
 		sts = sts_;
 		interv = interv_;
-		hts = Math.round(hts_ / 1000);
+		hts = hts_ ;
 	}
 	
 	public DataPacket(DataPacket odp, int offset){

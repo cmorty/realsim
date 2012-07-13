@@ -101,7 +101,6 @@ abstract public class CmdHandler implements DataPacketHandler  {
 	
 	
 	public void handleDataPaket(DataPacket dp) {
-		System.out.printf("PKTSS: %d\n" , pkts.size());
 		pkts.add(dp);
 		
 	}

@@ -8,6 +8,7 @@ import java.util.Observer;
 
 import org.apache.log4j.Logger;
 
+import se.sics.cooja.GUI;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteType;
 import se.sics.cooja.Simulation;
@@ -19,12 +20,14 @@ import se.sics.cooja.radiomediums.DirectedGraphMedium.Edge;
 public class RealSim implements Observer  {
 	private static Logger	logger			= Logger.getLogger(RealSim.class);
 	Simulation sim;
+	GUI gui;
 	private ArrayList<RealSimEdge> delayedEdges = new ArrayList<RealSimEdge>();
   
 	
 	
-	RealSim(Simulation simu){
-		sim = simu;
+	RealSim(Simulation sim, GUI gui){
+		this.sim = sim;
+		this.gui = gui;
 	}
 	
 	
@@ -73,6 +76,7 @@ public class RealSim implements Observer  {
 		
 		//Add after everything is configured
 		sim.addMote(mote);
+		gui.updateGUIComponentState();
 
 
 		

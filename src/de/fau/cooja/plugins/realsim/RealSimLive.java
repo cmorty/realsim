@@ -35,7 +35,7 @@ import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.HashMap;
-import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Vector;
 
 import javax.swing.JComboBox;
@@ -84,7 +84,7 @@ public class RealSimLive extends VisPlugin implements ActionListener, DataPacket
 	public RealSimLive(Simulation simulation, GUI gui) {
 		super("RealSim Live", gui);
 		this.sim = simulation;
-		rs = new RealSim(sim);
+		rs = new RealSim(sim, gui);
 	}
 	
 	public void startPlugin() {
@@ -168,7 +168,7 @@ public class RealSimLive extends VisPlugin implements ActionListener, DataPacket
 		
 	}
 	
-	private HashMap<Edge, Integer> edgetimes = new  HashMap<Edge, Integer>();
+	private HashMap<Edge, Long> edgetimes = new  HashMap<Edge, Long>();
 	
 	
 	
@@ -186,10 +186,10 @@ public class RealSimLive extends VisPlugin implements ActionListener, DataPacket
 		rs.addmote(id, mtbm.getSelectedMote());
 	}
 	
-	public void testTimes(int t){
+	public void testTimes(long hts){
 		
-		for(Map.Entry<Edge, Integer> entry : edgetimes.entrySet()){
-			if(t - entry.getValue() > 3 * 60){ //FIXME remove constant
+		for(Entry<Edge, Long> entry : edgetimes.entrySet()){
+			if(hts - entry.getValue() > 3 * 60){ //FIXME remove constant
 				Edge e = entry.getKey();
 				if(rs.rmEdge(e.src, e.dst)){
 					logger.info("Removed: " + idOut(e.src) + " " + idOut(e.dst));

@@ -70,7 +70,7 @@ public class AnalyzedData {
 
 				
 		
-		int tsoff = data[0].hts - data[0].ts;
+		long tsoff = data[0].hts - data[0].ts;
 		
 		
 		
@@ -82,7 +82,7 @@ public class AnalyzedData {
 				logger.debug("" + dp.hts + "\t" + dp.ts + "\t" + (dp.hts -tsoff- dp.ts));
 				if(Math.abs(dp.hts - tsoff - dp.ts) > 2){
 					sinkreboot ++;				
-					logger.info("Sink rebooted at " + new Integer(dp.hts).toString() );
+					logger.info("Sink rebooted at " + new Long(dp.hts).toString() );
 				}
 				tsoff = dp.hts - dp.ts;
 			}
@@ -91,7 +91,7 @@ public class AnalyzedData {
 			for(DataPacket dp : data){
 				if(dp.ts < ts){
 					sinkreboot ++;				
-					logger.info("Sink rebooted at " + new Integer(ts).toString() );
+					logger.info("Sink rebooted at " + new Long(ts).toString() );
 				}
 				ts = dp.ts;
 			}
@@ -280,7 +280,7 @@ public class AnalyzedData {
 		
 		
 		rv.append("\nGeneral stats\n=============\n");
-		rv.append("\tSink Reboots:    " + sinkreboot + "\n");
+		rv.append("Sink Reboots:    " + sinkreboot + "\n");
 		rv.append("Last first packet: " + packet_first_last + "\n" );
 		rv.append("First last packet: " + packet_last_first + "\n" );
 		rv.append("Last packet:       " + packet_last + "\n" );
@@ -295,7 +295,7 @@ public class AnalyzedData {
 		
 		rv.append("\nPacket stats\n============\n");
 		for(NodeData nd : nodedata.values()){
-			rv.append("Node:   " + RealSimUtil.idToStringInt(nd.id) + ":\n" );
+			rv.append("Node:   " + RealSimUtil.idToStringInt(nd.id) + " ("+RealSimUtil.idToStringHex(nd.id)+"):\n" );
 			rv.append("\tPackts: " + nd.packets.size() + "\n");
 			rv.append("\tDups  : " + nd.dups + "\n");
 			rv.append("\tMoved : " + nd.moved + "\n");

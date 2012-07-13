@@ -43,7 +43,7 @@ public class RealSimFile implements PacketOutput{
 				
 				for(Connection cnn : dp.getCns()){
 					out.printf("%d;setedge;%s;%s;%f;%d;%d\n", 
-							ts,
+							ts * 1000, // s -> ms
 							RealSimUtil.idToStringInt(cnn.node), 
 							RealSimUtil.idToStringInt(dp.src), 
 							((float)cnn.rcv)/(cnn.rcv+cnn.loss),
@@ -54,7 +54,7 @@ public class RealSimFile implements PacketOutput{
 				if(lts + 10 < ts){
 					for(Integer e : edges){
 						if(! curedges.contains(e)){
-							out.printf("%d;rmedge;%s;%s\n", ts,
+							out.printf("%d;rmedge;%s;%s\n", ts * 1000,
 									RealSimUtil.idToStringInt(e), 
 									RealSimUtil.idToStringInt(dp.src));
 						}

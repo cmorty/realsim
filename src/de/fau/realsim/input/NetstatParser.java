@@ -45,7 +45,7 @@ public class NetstatParser extends PacketInput {
 						Integer.parseInt(el[3], 16),
 						Integer.parseInt(el[4], 16),
 						Integer.parseInt(el[5], 16),
-						Calendar.getInstance().getTimeInMillis()
+						Math.round(Calendar.getInstance().getTimeInMillis()/1000)
 					);
 				} catch (Exception ex) {
 					dp = null;
