@@ -46,7 +46,7 @@ public class RealSimFile implements PacketOutput{
 							ts * 1000, // s -> ms
 							RealSimUtil.idToStringInt(cnn.node), 
 							RealSimUtil.idToStringInt(dp.src), 
-							((float)cnn.rcv)/(cnn.rcv+cnn.loss),
+							((float)cnn.rcv)/(cnn.rcv+cnn.loss)*100, // Ratio -> %
 							cnn.rssi,
 							cnn.lqi);
 					curedges.add(cnn.node);
