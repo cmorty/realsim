@@ -9,6 +9,7 @@ import org.jdom.Element;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -17,13 +18,16 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Vector;
 
+import javax.swing.GroupLayout;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 
 import se.sics.cooja.ClassDescription;
@@ -49,6 +53,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 	JComboBox				default_node;
 	JButton			load			= new JButton("Import");
 	GUI gui;
+	JCheckBox loadFile			= new JCheckBox("Load from File instead of Simulation");
 	
 	private final static String failmsg = "This Plugin needs a DGRM.";
 	
@@ -73,18 +78,75 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		}
 		
 		
+		//Init components
 		default_node = new JComboBox(new MoteTypeComboboxModel(sim));
 		
-		add("Center", controlPanel);
-		controlPanel.add(filename);
 		filename.addActionListener(this);
-		controlPanel.add(select_file);
 		select_file.addActionListener(this);
-		
-		controlPanel.add(load);
 		load.addActionListener(this);
+		loadFile.addActionListener(this);
 		
-		controlPanel.add(default_node);
+		
+		//LAyout
+		GroupLayout layout = new GroupLayout(controlPanel);
+		controlPanel.setLayout(layout);
+		layout.setAutoCreateGaps(true);
+		layout.setAutoCreateContainerGaps(true);
+				
+		
+		
+		
+		
+
+		
+		
+		
+		layout.setVerticalGroup(layout.createSequentialGroup()
+				.addComponent(filename, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+				          GroupLayout.PREFERRED_SIZE)
+		    .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+		        
+		     )
+		    .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+		    	.addComponent(select_file)
+		    	.addComponent(load)
+		    )
+		    .addComponent(default_node,  GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+		            GroupLayout.PREFERRED_SIZE)
+		    .addComponent(loadFile,  GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+				            GroupLayout.PREFERRED_SIZE)
+		);
+		
+		layout.setHorizontalGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+				.addComponent(filename)
+				.addGroup(layout.createSequentialGroup()
+					.addComponent(select_file)
+					.addComponent(load)	
+				)
+				.addComponent(default_node)
+				.addComponent(loadFile)
+		);
+		
+		
+/*
+		   GroupLayout.SequentialGroup hGroup = layout.createSequentialGroup();
+		   hGroup.addGroup(layout.createParallelGroup().
+		            addComponent(filename).addComponent(select_file));
+		   hGroup.addGroup(layout.createParallelGroup().
+		            addComponent(default_node).addComponent(load));
+		   layout.setHorizontalGroup(hGroup);
+		   
+
+		   GroupLayout.SequentialGroup vGroup = layout.createSequentialGroup();
+
+		   vGroup.addGroup(layout.createParallelGroup(Alignment.BASELINE).
+		            addComponent(filename).addComponent(default_node));
+		   vGroup.addGroup(layout.createParallelGroup(Alignment.BASELINE).
+		            addComponent(select_file).addComponent(load));
+		   layout.setVerticalGroup(vGroup);
+	*/	
+		
+		add("Center",  new JScrollPane(controlPanel));
 		
 		rs = new RealSim(sim, gui);
 		SimEvent.setRs(rs);
@@ -113,65 +175,92 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 	
 	int strToId(String str) {
 		String[] tok = str.split("\\.");
-		int id = new Integer(tok[0]) + new Integer(tok[1]) * 256;
+		//Motes in Cooja are little endian!
+		int id = new Integer(tok[1]) * 256 + new Integer(tok[0]);
 		return id;
 	}
 	
-	private void parsefile(String filename) {
+	private boolean parsefile(String filename) {
 		events = new ArrayList<SimEvent>();
 		try {
-			BufferedReader sc;
+			BufferedReader sc = null;
 			String line;
 			int ln = 0;
-			
-			sc = new BufferedReader(new FileReader(filename));
-			while (null != (line = sc.readLine())) {
+			try{
+				sc = new BufferedReader(new FileReader(filename));
+			} catch(Exception e){
+				logger.fatal("Unable to open file: " + filename);
+				if (GUI.isVisualized()) {
+					JOptionPane.showMessageDialog(GUI.getTopParentContainer(),
+							"Unable to open File: " + filename, 
+							"RealSimFile - Error",
+							JOptionPane.ERROR_MESSAGE);
+				}
+		                
+				return false;
+			}
+			while ( null != (line = sc.readLine())) {
 				ln++;
-				String[] t = line.split(";");
 				
+				if(line.length() == 0) continue;
+				
+				String[] t = line.split(";");
+				String exreason = null;
+				int exind = 0;
 				try {
 					
-					int time = new Integer(t[0]);
+					exind = 1; exreason = "Time";
+					long time = new Long(t[0]);
 					t[1] = t[1].toLowerCase();
 					
 					if (t[1].equals("addnode")) {
 						MoteTypeComboboxModel mtbm = (MoteTypeComboboxModel) default_node.getModel();
+						
+						exind = 2; exreason = "node Id";
 						SimEvent se = new SimEventAddNode(time, strToId(t[2]), mtbm.getSelectedMote());
 						events.add(se);
 					}
 
 					else if (t[1].equals("rmnode")) {
+						exind = 2; exreason = "node Id";
 						SimEvent se = new SimEventRmNode(time, strToId(t[2]));
 						events.add(se);
 					}
 
 					else if (t[1].equals("setedge")) {
+						exind = 2; exreason = "source Id";
 						int src = strToId(t[2]);
+						exind = 3; exreason = "target Id";
 						int dst = strToId(t[3]);
+						exind = 4; exreason = "Ratio";
 						double ratio = (new Double(t[4].replace(',', '.'))) / 100;
+						exind = 5; exreason = "RSSI";
 						double rssi = new Double(t[5].replace(',', '.'));
+						exind = 6; exreason = "LQI";
 						int lqi = new Integer(t[6]);
 						SimEvent se = new SimEventSetEdge(time, src, dst, ratio, rssi, lqi);
 						events.add((SimEvent) se);
 					}
 
 					else if (t[1].equals("rmedge")) {
+						exind = 2; exreason = "source Id";
 						int src = strToId(t[2]);
+						exind = 2; exreason = "target Id";
 						int dst = strToId(t[3]);
 						SimEvent se = new SimEventRmEdge(time, src, dst);
 						events.add((SimEvent) se);
 					} else {
-						logger.warn("Ignoring line " + ln);
+						logger.warn("Unknow command in line " + ln + ". - Igrnoring" );
 					}
 					
 				} catch (Exception e) {
 					// Continue with next line
-					logger.warn("Ignoring line " + ln, e);
+					logger.warn("Could not pase " + exreason + " in line "+ ln + ". (\"" + t[exind] + "\"). - Ignoring");
 				}
 			}
 			
 		} catch (Exception e) {
-			return;
+			return false;
 		}
 		sortEvents();
 		logger.info("RealSim imported " + events.size() + " events");
@@ -179,6 +268,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		eventShed.remove();
 		sim.scheduleEvent(eventShed,sim.getSimulationTime());
 		logger.info("Registered Event for: " + sim.getSimulationTime() );
+		return true;
 	}
 	
 	protected void sortEvents() {
@@ -217,6 +307,11 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 	public Collection<Element> getConfigXML() {
 		Vector<Element> config = new Vector<Element>();
 		Element element;
+		element = new Element("Filename");
+		element.setText(gui.createPortablePath(new File(filename.getText())).getPath());
+		config.add(element);
+		
+		config.add(new Element("Load").setText(loadFile.isSelected()?"true":"false"));
 		for (SimEvent se : events) {
 			element = new Element("SimEvent");
 			element.setText(se.getClass().getName());
@@ -237,8 +332,16 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		events = new ArrayList<SimEvent>();
 		for (Element element : configXML) {
 			String name = element.getName();
-			
+			if(name.equals("Filename")){
+				filename.setText(gui.restorePortablePath(new File(element.getText())).getPath());
+			}
+			if(name.equals("Load")){
+				loadFile.setSelected(element.getText().toLowerCase().equals("true"));
+			}
+			//Load anyway....
 			if (name.equals("SimEvent")) {
+				
+				
 				SimEvent se = null;
 				String intfClass = element.getText().trim();
 				
@@ -254,40 +357,29 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 				
 				@SuppressWarnings("rawtypes")
 				java.lang.reflect.Constructor constr = null;
+			
 				try {
-					constr = rseClass.getConstructor(new Class[]{getClass(), int.class,Collection.class} );
-					
-				} catch (SecurityException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				} catch (NoSuchMethodException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				
-				try {
+					constr = rseClass.getConstructor(new Class[]{getClass(), long.class, Collection.class} );
 					@SuppressWarnings("rawtypes")
 					Object[] para = new Object[] {this, 
-							(int)Integer.parseInt(element.getAttribute("time").getValue()), (Collection)element.getChildren() };
+							(long)Long.parseLong(element.getAttribute("time").getValue()), (Collection)element.getChildren() };
 					se = (SimEvent) constr.newInstance(para);
-				} catch (InstantiationException e) {
+				} catch (Exception e) {
 					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (IllegalAccessException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (IllegalArgumentException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (InvocationTargetException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+					logger.error("Something went wrong creating a new SimEvent: " + intfClass , e);
 				}
 				
 				events.add(se);
 				
 			}
 		}
+		if(loadFile.isSelected()){
+			if(!parsefile(filename.getText())){
+				logger.info("As teh file " +filename.getText() + " could not be loaded, the" +
+						"settings from the simulation are used.");
+			}
+		}
+		
 		sortEvents();
 		logger.info("RealSim loaded " + events.size() + " events");
 		sim.scheduleEvent(eventShed,sim.getSimulationTime());
@@ -308,7 +400,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 				rs = lrs;
 		}
 		
-		public SimEvent(int time) {
+		public SimEvent(long time) {
 			this.time = time;
 			// TODO Auto-generated constructor stub
 		}
@@ -338,11 +430,20 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		int			id	= 0;
 		MoteType	mt	= null;
 		
-		public SimEventAddNode(int time, int id, MoteType mt) {
+		public SimEventAddNode(long time, int id, MoteType mt) {
 			super(time);
 			this.id = id;
 			this.mt = mt;
 		}
+		
+		public SimEventAddNode(long time, Collection<Element> configXML) {
+			super(time);
+			if (!setConfigXML(configXML)) {
+				throw new IllegalArgumentException("src or dst not set");
+			}
+			
+		}
+		
 		
 		@Override
 		void action() {
@@ -376,22 +477,23 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 			return true;
 		}
 		
-		public SimEventAddNode(int time, Collection<Element> configXML) {
-			super(time);
-			if (!setConfigXML(configXML)) {
-				throw new IllegalArgumentException("src or dst not set");
-			}
-			
-		}
+		
 		
 	}
 	
 	class SimEventRmNode extends SimEvent {
 		int	id;
 		
-		public SimEventRmNode(int time, int id) {
+		public SimEventRmNode(long time, int id) {
 			super(time);
 			this.id = id;
+		}
+		
+		public SimEventRmNode(long time, Collection<Element> configXML) {
+			super(time);
+			if (!setConfigXML(configXML)) {
+				throw new IllegalArgumentException("id not set");
+			}
 		}
 		
 		@Override
@@ -422,12 +524,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 			return true;
 		}
 		
-		public SimEventRmNode(int time, Collection<Element> configXML) {
-			super(time);
-			if (!setConfigXML(configXML)) {
-				throw new IllegalArgumentException("id not set");
-			}
-		}
+
 		
 	}
 	
@@ -435,7 +532,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		
 		RealSimEdge	rse	= null;
 		
-		public SimEventSetEdge(int time, int src, int dst, double ratio, double rssi, int lqi) {
+		public SimEventSetEdge(long time, int src, int dst, double ratio, double rssi, int lqi) {
 			super(time);
 			rse = new RealSimEdge(src, dst);
 			rse.dst = dst;
@@ -474,7 +571,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 			return true;
 		}
 		
-		public SimEventSetEdge(int time, Collection<Element> configXML) {
+		public SimEventSetEdge(long time, Collection<Element> configXML) {
 			super(time);
 			if (!setConfigXML(configXML)) {
 				throw new IllegalArgumentException("RSE not set");
@@ -487,7 +584,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		
 		RealSimEdge	rse;
 		
-		public SimEventRmEdge(int time, int src, int dst) {
+		public SimEventRmEdge(long time, int src, int dst) {
 			super(time);
 			rse = new RealSimEdge(src, dst);
 			rse.dst = dst;
@@ -524,7 +621,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 			return true;
 		}
 		
-		public SimEventRmEdge(int time, Collection<Element> configXML) {
+		public SimEventRmEdge(long time, Collection<Element> configXML) {
 			super(time);
 			if (!setConfigXML(configXML)) {
 				throw new IllegalArgumentException("RSE not set");
