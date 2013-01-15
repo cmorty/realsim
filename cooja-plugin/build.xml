@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 <project name="COOJA: RealSim" default="jar" basedir=".">
-	<property name="cooja" location="../cooja"/>
+	<property name="cooja" location="../../cooja"/>
 	<property name="javadoc" location="javadoc"/>
 
 	<property name="cooja_jar" value="${cooja}/dist/cooja.jar"/>
