@@ -11,7 +11,6 @@ import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -258,6 +257,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 					logger.warn("Could not pase " + exreason + " in line "+ ln + ". (\"" + t[exind] + "\"). - Ignoring");
 				}
 			}
+			sc.close();
 			
 		} catch (Exception e) {
 			return false;
