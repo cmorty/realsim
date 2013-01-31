@@ -1,0 +1,12 @@
+<expconf>
+	
+	<!-- How long to reserve the Network in min  - You may use an expression -->
+	<time>60 * 12</time>
+	<firmware>../sky/statprinter.ihex</firmware>
+	<!-- If no motes are listed all available motes are used.
+	<mote>urn:fau:0x0001</mote>
+	<mote>urn:fau:0x0002</mote>
+	-->
+	<output>realsim.out</output>
+	
+</expconf>

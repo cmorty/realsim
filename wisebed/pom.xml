@@ -58,9 +58,8 @@
 					  <launchers>
 						<launcher>
 						  <id>foo</id>
-						  <mainClass>de.fau.wisebed.ExperimentClient</mainClass>
+						  <mainClass>de.fau.realsim.wisebed.RealsimClient</mainClass>
 						  <args>
-							<arg>hw.ihex</arg>
 						  </args>
 						  <jvmArgs>
 							<jvmArg>-Xmx128m</jvmArg>
@@ -79,7 +78,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>de.fau.wisebed.ExperimentClient</mainClass>
+                            <mainClass>de.fau.dryrun.wisebed.ExperimentClient</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
