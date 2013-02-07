@@ -132,6 +132,10 @@ public class RealSimEdge {
 		return (this.src == e.src && this.dst == e.dst) ? true : false;
 	}
 	
+	@Override
+	public int hashCode() {
+		return (int) ((src * 255* 255 + dst) *31 + (new Double(ratio * 1000).intValue()) + rssi + lqi *100);
+	}
 	// Todo
 	// if (ratio <= 0.0 || ratio > 1.0 || rssi > 90 || rssi <= 0 || lqi > 110 ||
 	// lqi <= 0) {

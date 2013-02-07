@@ -34,9 +34,16 @@ package de.fau.cooja.plugins.realsim;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.HashMap;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.Map.Entry;
-import java.util.Vector;
+import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
@@ -51,20 +58,138 @@ import org.apache.log4j.Logger;
 
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.GUI;
-import se.sics.cooja.Mote;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.VisPlugin;
 import se.sics.cooja.radiomediums.DirectedGraphMedium;
-import de.fau.realsim.Connection;
-import de.fau.realsim.DataPacket;
-import de.fau.realsim.DataPacketHandler;
-import de.fau.realsim.RealSimClient;
+
+
+
+
 
 
 @ClassDescription("RealSim Live")
 @PluginType(PluginType.SIM_PLUGIN)
-public class RealSimLive extends VisPlugin implements ActionListener, DataPacketHandler{
+public class RealSimLive extends VisPlugin implements ActionListener {
+	
+	private static Logger	logger			= Logger.getLogger(RealSimLive.class);
+	int sd = 0;
+	
+	Timer tmr = new Timer(true); 
+	
+	private class Edge{
+		final int src;
+		final int dst;
+		
+		public Edge(int src, int dst) {	this.src = src;	this.dst = dst;	}
+				
+		@Override
+		public int hashCode() {	return src * 255* 255 + dst;}
+		
+		@Override
+		public boolean equals(Object obj) { return (hashCode() == obj.hashCode());	}
+		
+	}
+	
+	private ConcurrentHashMap<Edge, Integer> edgetimes = new  ConcurrentHashMap<Edge, Integer>();
+	
+	
+	private class RealSimServer extends Thread{
+		
+		
+		
+		private void addmote(int id){
+			MoteTypeComboboxModel mtbm = (MoteTypeComboboxModel) default_node.getModel();
+			rs.addmote(id, mtbm.getSelectedMote());
+		}
+		
+		
+		Integer port;
+		ServerSocket ls;
+		Socket s;
+		@Override
+		public void run() {
+			
+			// TODO Auto-generated method stub
+			logger.info("Starting logger on port " + port.toString());
+			try {
+				 ls= new ServerSocket(port);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				logger.error("Could not open port " + port);
+				return;
+			}
+			logger.info("Waiting for connection on " + new Integer(ls.getLocalPort()).toString());
+			while (true) {
+				if( sd != 0 ) break; 
+				
+				BufferedReader reader;
+				try {
+					s = ls.accept();
+					reader = new BufferedReader(new InputStreamReader(s.getInputStream()));
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					if(sd == 0){
+						logger.error("Something went wrong while accepting connections.\n" + e.getMessage());
+					}
+					break;
+				}
+				logger.debug("Connected: " + s.getInetAddress().getHostName());
+				String line;
+				try {
+					
+					while ((line = reader.readLine()) != null) {
+																	
+						String[] el = line.split(" ");			
+						if(el.length != 6){
+							logger.warn("Unexpected number of elements: " + line);
+							continue;
+						}
+						int timeout = 0, src = 0, dst = 0 ,prr = 0, rssi = 0, lqi = 0;
+						Boolean ok = true;
+						try {								
+							 timeout = Integer.parseInt(el[0], 16);
+							 src = Integer.parseInt(el[1], 16);	
+							 dst = Integer.parseInt(el[2], 16);
+							 prr = Integer.parseInt(el[3], 16);
+							 rssi = Integer.parseInt(el[4], 16);
+							 lqi = Integer.parseInt(el[5], 16);
+							
+							 
+						}catch(Exception e){
+							ok = false;
+							logger.warn("Could not parse: " + line);
+						}
+						if(ok){
+							if(!rs.moteExists(src)) addmote(src);
+							if(!rs.moteExists(dst)) addmote(dst);
+						
+							rs.setEdge(src, dst, ((float)prr) / ((float)100),  rssi, lqi);
+							edgetimes.put(new Edge(src, dst), timeout);
+						}
+						
+					}
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				logger.info("Connection closed");
+				
+			}
+			//Close socket
+			try {
+				ls.close();
+			} catch (IOException e) {
+				//No need to catch this.
+			}
+		}
+	}
+	
+	
+	
+	
+	
+	
 	
 	private static final long	serialVersionUID	= 4368807123350830772L;
 	protected Simulation		sim;
@@ -76,7 +201,7 @@ public class RealSimLive extends VisPlugin implements ActionListener, DataPacket
 	JTextField					insert_port			= new JTextField(4);
 	JComboBox					default_node;
 	
-	private static Logger	logger			= Logger.getLogger(RealSimLive.class);
+	
 
 	
 	RealSim rs = null;
@@ -113,6 +238,22 @@ public class RealSimLive extends VisPlugin implements ActionListener, DataPacket
 		this.setSize(180, 190);
 		this.setLocation(320, 0);
 		this.setBackground(Color.WHITE);
+		
+		TimerTask decay = new TimerTask() {
+			public void run() {
+				
+				Set<Entry<Edge, Integer>> es = edgetimes.entrySet();
+				for(Entry<Edge, Integer> ent :  es){
+					int time = ent.getValue();
+					if(time > 0){
+						if(time == 1)	es.remove(ent);
+						else ent.setValue(time - 1);
+					}
+				}
+			}
+		};
+		tmr.schedule(decay, 1000, 1000);
+		
 	}
 	
 	public void actionPerformed(ActionEvent e) {
@@ -120,9 +261,9 @@ public class RealSimLive extends VisPlugin implements ActionListener, DataPacket
 		if (src == set_port) {
 			try {
 				int port = new Integer(insert_port.getText());
-				RealSimClient rsl = new RealSimClient(this);
-				rsl.port= port;
-				Thread l = new Thread(rsl);
+				RealSimServer rss = new RealSimServer();
+				rss.port= port;
+				Thread l = new Thread(rss);
 				l.start();
 				controlPanel.removeAll();
 				JProgressBar bar = new JProgressBar(JProgressBar.HORIZONTAL);
@@ -141,103 +282,6 @@ public class RealSimLive extends VisPlugin implements ActionListener, DataPacket
 	
 
 
-	
-
-
-	private HashMap<Integer, DataPacket> dpm= new HashMap<Integer, DataPacket>(); 
-	
-	private class Edge{
-		final int src;
-		final int dst;
-		
-		public Edge(int src, int dst) {
-			this.src = src;
-			this.dst = dst;
-		}
-		
-		
-		@Override
-		public int hashCode() {
-			return src * 255* 255 + dst;
-		}
-		
-		@Override
-		public boolean equals(Object obj) {
-			return (hashCode() == obj.hashCode());
-		}
-		
-	}
-	
-	private HashMap<Edge, Long> edgetimes = new  HashMap<Edge, Long>();
-	
-	
-	
 
 	
-	private String idOut(int id){
-		Integer i = new Integer(id);
-		return i.toString() + " (" + Integer.toHexString(id) + ")";
-	}
-	
-	
-	
-	private void addmote(int id){
-		MoteTypeComboboxModel mtbm = (MoteTypeComboboxModel) default_node.getModel();
-		rs.addmote(id, mtbm.getSelectedMote());
-	}
-	
-	public void testTimes(long hts){
-		
-		for(Entry<Edge, Long> entry : edgetimes.entrySet()){
-			if(hts - entry.getValue() > 3 * 60){ //FIXME remove constant
-				Edge e = entry.getKey();
-				if(rs.rmEdge(e.src, e.dst)){
-					logger.info("Removed: " + idOut(e.src) + " " + idOut(e.dst));
-				}
-			}
-		}
-		
-		
-	}
-	
-	public void handleDataPaket(DataPacket dp){
-		
-		//Add the mote
-		addmote(dp.src);
-		
-		//Get all other motes
-		Vector<Integer> mids = moteids();
-		
-		//Remove self.
-		mids.removeElement(dp.src);
-		//Add this datapacket
-		dpm.put(dp.src, dp);
-		
-		for(Connection cn : dp.getCns()){
-			if(mids.contains(cn.node)) { // Does the node already exist
-				mids.removeElement(cn.node); //Remove node from possible Connections
-			} else {
-				addmote(cn.node); //Create node
-			}
-			if(cn.rcv != 0){ // Set edge
-				rs.setEdge(cn.node, dp.src, (double)cn.rcv/(cn.rcv + cn.loss),  cn.rssi, cn.lqi);
-				edgetimes.put(new Edge(cn.node, dp.src), dp.hts);
-			}
-		}
-
-		testTimes(dp.hts);
-			
-	}
-	
-	
-
-
-	private Vector<Integer> moteids(){
-		Vector <Integer> rv = new Vector<Integer>();
-		Mote[] mts = sim.getMotes();
-		for(Mote m : mts){
-			rv.add(m.getID());
-		}
-		return rv;
-	}
 }

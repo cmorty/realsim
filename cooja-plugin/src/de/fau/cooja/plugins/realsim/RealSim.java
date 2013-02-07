@@ -44,7 +44,7 @@ public class RealSim implements Observer  {
 		}
 	}
 	
-	private boolean moteExists(int id){
+	public boolean moteExists(int id){
 		if (sim.getMoteWithID(id) != null) return true; 
 		if (sim.getMoteWithIDUninit(id) != null) return true;
 		return false;
@@ -54,9 +54,6 @@ public class RealSim implements Observer  {
 	
 	
 	public boolean addmote(Integer id, MoteType mt){
-		
-		
-		
 		
 		if (moteExists(id)) {
 			logger.info("Mote " + id + "already exists.");
@@ -133,12 +130,13 @@ public class RealSim implements Observer  {
 		return true;
 	}
 	
-	public void setEdge(int src, int dst, double ratio, double rssi, int lqi){
+	public RealSimEdge setEdge(int src, int dst, double ratio, double rssi, int lqi){
 		RealSimEdge rse = new RealSimEdge(src, dst);
 		rse.ratio = ratio;
 		rse.rssi = rssi;
 		rse.lqi = lqi;
 		setEdge(rse);
+		return rse;
 	}
 	
 	
@@ -146,7 +144,7 @@ public class RealSim implements Observer  {
 		// Remove old existing edge
 		
 		
-		logger.info("Setting edge: " + idOut(rse.src) + " - " + idOut(rse.dst));
+		logger.info("Setting edge: " + idOut(rse.src) + " - " + idOut(rse.dst) + " PRR: " + rse.ratio + " RSSI: " + rse.rssi + " LQI: " + rse.lqi );
 		DirectedGraphMedium rm = (DirectedGraphMedium) sim.getRadioMedium();
 		DGRMDestinationRadio dr;
 		
