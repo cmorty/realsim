@@ -795,14 +795,13 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 	}
 	
 	void updateEdges() {
-		logger.info("updating edges");
 		panel.resetEdges();
 		for (DirectedGraphMedium.Edge e : radioMedium.getEdges()) {
 			int src = e.source.getMote().getID();
 			int dst = e.superDest.radio.getMote().getID();
 			double rssi = ((DGRMDestinationRadio) e.superDest).signal;
 			double lqi = ((DGRMDestinationRadio) e.superDest).lqi;
-			logger.info("Edge " + src + " " + dst);
+			
 			panel.setEdge(src, dst, rssi, lqi);
 			
 		}
@@ -810,19 +809,14 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 	}
 	
 	void updateMotes() {
-		logger.info("updating motes");
 		ArrayList<Integer> nds = new ArrayList<Integer>(panel.getNodeIds());
 		
 		for (Mote m : sim.getMotes()) {
 			Integer id = m.getID();
-			logger.debug("Checking Node" + id);
 			
-			
-			if (!nds.contains(id)) { // Mote does not exist -> Add
-				logger.debug("Adding Node" +m.getID());
+			if (!nds.contains(id)) { // Mote does not exist -> Add			
 				panel.addNode(m.getID());
 			} else { // Mote exists -> Do net remove it later
-				logger.debug("Not removing Node" +m.getID());
 				nds.remove(id);
 			}
 			
