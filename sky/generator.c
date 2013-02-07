@@ -6,11 +6,12 @@
 #include "dev/leds.h"
 #include "lib/random.h"
 #include "stdio.h"
+#include "ringbuf.h"
 
 #include "generator.h"
 #include "handlestats.h"
 
-
+#include "dev/ds2411.h"
 /**
  * See Datasheet or CC2420.java
  * Might be 55 or 53 or whatever
@@ -28,7 +29,7 @@ static uint16_t beacontimer[BEACONS_PER_PERIODE];
 static uint8_t beacontimerpos = BEACONS_PER_PERIODE;
 
 
-#define MAX_NEIGHBORS 16
+#define MAX_NEIGHBORS 50
 
 //Ringbuf
 struct idata{
@@ -38,9 +39,12 @@ struct idata{
 	uint16_t seqno;
 };
 
+#define BUFS 32
 
-struct idata idatabuf[4];
-
+static struct idata idatabuf[BUFS];
+static volatile uint8_t bufuse[BUFS];
+static uint8_t inbufdata[BUFS];
+static struct ringbuf inbuf;
 
 static struct broadcast_conn broadcast;
 
@@ -62,25 +66,27 @@ LIST(neighbors_list);
 
 PROCESS(beacon_process, "Beacon process");
 
+#define SUNIT 64
 
-
+#define BEACON_PAUSE_MIN_U (BEACON_PAUSE_MIN * SUNIT)
+#define BEACONS_PERIODE_U (BEACONS_PERIODE * SUNIT)
 
 /*----------------------- BEACONING -----------------------------------------*/
 
 static void setbeacontimer(){
-	static uint16_t last = BEACON_PAUSE_MIN;
+	static uint16_t last = BEACON_PAUSE_MIN_U;
 	uint8_t i;
 	for(i = 0; i < BEACONS_PER_PERIODE; i++){
 		while(1){
-			uint16_t b = random_rand() % BEACONS_PERIODE;
+			uint16_t b = random_rand() % BEACONS_PERIODE_U;
 			//Check for the beginning
-			if(b + last < BEACON_PAUSE_MIN) continue;
+			if(b + last < BEACON_PAUSE_MIN_U) continue;
 			uint8_t s;
 			//Check distance to others
 			for(s = 0; s < i; s++){
-				if(b + BEACON_PAUSE_MIN < beacontimer[s]) break;
+				if(b + BEACON_PAUSE_MIN_U < beacontimer[s]) break;
 			}
-			if(s > 0 &&  b < beacontimer[s-1] + BEACON_PAUSE_MIN){
+			if(s > 0 &&  b < beacontimer[s-1] + BEACON_PAUSE_MIN_U){
 				continue;
 			}
 			uint16_t l = b;
@@ -92,7 +98,7 @@ static void setbeacontimer(){
 			break;
 		}
 	}
-	uint16_t tlast = BEACONS_PERIODE - beacontimer[BEACONS_PER_PERIODE - 1];
+	uint16_t tlast = BEACONS_PERIODE_U - beacontimer[BEACONS_PER_PERIODE - 1];
 	//calculate offsets
 
 	for(i = BEACONS_PER_PERIODE - 1; i > 0 ; i--){
@@ -100,6 +106,11 @@ static void setbeacontimer(){
 	}
 	beacontimer[0] += last;
 
+	printf("BC: ");
+	for(i = 0; i < BEACONS_PER_PERIODE ; i++){
+		printf("%i ",  beacontimer[i]);
+	}
+	puts("");
 	last = tlast;
 }
 
@@ -110,15 +121,19 @@ static void push_stats(struct neighbor *n){
 }
 
 
+
+
 /**
  * Handles received packets in a protothread to avoid concurrency
  */
-static void handlepackets(void){
+static int handlepackets(void){
 	uint_fast8_t i;
 	struct neighbor *n;
-	for(i = 0; i < sizeof(idatabuf)/sizeof(struct idata) ; i++){
-		if(idatabuf[i].rssi == 0 ) continue;
+	int rv = 0;
+	int id = ringbuf_get(&inbuf);
+	if(id != -1){
 
+		rv = 1;
 
 
 		/* check if we already know this neighbor. */
@@ -136,7 +151,9 @@ static void handlepackets(void){
 			n = memb_alloc(&neighbors_memb);
 			if(n == NULL) {
 				//Continue to next;
-				continue;
+				bufuse[i] = 0;
+				puts("W: To many neighbours");
+				return 1;
 			}
 			memset(n, 0, sizeof(*n));
 
@@ -165,12 +182,15 @@ static void handlepackets(void){
 
 		n->last_seqno = idatabuf[i].seqno;
 		n->recv_count++;
-		idatabuf[i].rssi = 0;
+		bufuse[i] = 0;
+		return 1;
 	}
 
 	//Search for neighbors, that will not receive any data for that period any more
+
 	for(n = list_head(neighbors_list); n != NULL; n = list_item_next(n)) {
 		if(clock_seconds() - n->last_seen > BEACONS_PERIODE * 2 ) {
+			n->remove = 1;
 			push_stats(n);
 			list_remove(neighbors_list, n);
 			memb_free(&neighbors_memb, n);
@@ -178,7 +198,7 @@ static void handlepackets(void){
 			break;
 		}
 	}
-
+	return 0;
 }
 
 
@@ -188,6 +208,8 @@ static void broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from);
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
 process_event_t rcv_event;
 
+
+static volatile uint8_t handling_packets;
 PROCESS_THREAD(beacon_process, ev, data){
 	static struct etimer et;
 	static uint16_t seqno = 1;
@@ -198,11 +220,14 @@ PROCESS_THREAD(beacon_process, ev, data){
 
 	PROCESS_BEGIN();
 	/* Init */
+		random_init(*(long *)ds2411_id + *(long * )&rimeaddr_node_addr);
+		ringbuf_init(&inbuf, inbufdata, sizeof(inbufdata));
 		if(!rcv_event) rcv_event = process_alloc_event();
-		etimer_set(&et, CLOCK_SECOND * 2);
+		etimer_set(&et, (random_rand() % BEACONS_PERIODE_U) * CLOCK_SECOND / SUNIT);
 		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 		broadcast_open(&broadcast, 222, &broadcast_call);
 		etimer_set(&et, CLOCK_SECOND * 2);
+		static int handll;
 		while(1) {
 			//Set timer
 			if(beacontimerpos == BEACONS_PER_PERIODE){
@@ -210,11 +235,31 @@ PROCESS_THREAD(beacon_process, ev, data){
 				beacontimerpos = 0;
 			}
 			//Wait for timer of data
-			PROCESS_WAIT_EVENT();
+			if(!handlepackets() || handll > 10){
+				static int mon;
+				handling_packets = 0;
+				if(handll > 10){
+					if(1 || mon++ > 10){
+						int full = 0;
+						int i;
+						for(i = 0; i < BUFS; i++) if(bufuse[i] != 0) full++ ;
+						printf("J: %x\n", full);
+						mon = 0;
+					}
+					process_post(&beacon_process, rcv_event ,NULL);
+				} else {
+					mon = 0;
+				}
+				PROCESS_YIELD();
+				handll = 0;
+				handling_packets = 1;
+			} else {
+				handll ++;
 
+			}
 			//Beaconning!
 			if(etimer_expired(&et)){
-				etimer_reset_set(&et, beacontimer[beacontimerpos] * CLOCK_SECOND);
+				etimer_reset_set(&et, beacontimer[beacontimerpos] * CLOCK_SECOND / SUNIT);
 
 				beacontimerpos++;
 
@@ -231,7 +276,7 @@ PROCESS_THREAD(beacon_process, ev, data){
 			}
 
 			//Handle Received data
-			handlepackets();
+
 
 		}
 	PROCESS_END();
@@ -250,23 +295,25 @@ broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from)
 
 	//Put into buffer
 	uint_fast8_t i;
-	for(i = 0; i < sizeof(idatabuf)/sizeof(struct idata); i++){
 
-		if(idatabuf[i].rssi != 0) continue; //Search next;
+
+	for(i = 0; i < BUFS; i++){
+
+		if(bufuse[i] != 0) continue; //Search next;
+		bufuse[i] = 1;
 
 		bm = packetbuf_dataptr();
 		memcpy(&m, bm, sizeof(m));
-
-
 		rimeaddr_copy(&(idatabuf[i].src), from);
 		idatabuf[i].seqno = m.seqno;
 		idatabuf[i].lqi = (packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
-		//RSSI must come last!
 		idatabuf[i].rssi = (packetbuf_attr(PACKETBUF_ATTR_RSSI) + RSSI_OFFSET);
-		process_post(&beacon_process, rcv_event ,NULL);
+		ringbuf_put(&inbuf, i);
+
+		if(!handling_packets) process_post(&beacon_process, rcv_event ,NULL);
 		break;
 	}
-	if( i == sizeof(idatabuf)/sizeof(struct idata)){
+	if( i == BUFS){
 		printf("Temp-buffer full");
 	}
 

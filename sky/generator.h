@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include "net/rime.h"
 #define BEACON_PAUSE_MIN 2
-#define BEACONS_PER_PERIODE 6
-#define BEACONS_PERIODE 60
+#define BEACONS_PER_PERIODE 8
+#define BEACONS_PERIODE 80
 
 /* Struct for neighbor info */
 struct neighbor {
@@ -19,6 +19,9 @@ struct neighbor {
 	uint8_t dup_count;
 	uint16_t rssi;
 	uint16_t lqi;
+	struct {
+		uint8_t remove:1;
+	};
 };
 
 
