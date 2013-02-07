@@ -40,6 +40,7 @@ import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Map.Entry;
+
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -50,7 +51,6 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JProgressBar;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 
@@ -109,7 +109,7 @@ public class RealSimLive extends VisPlugin implements ActionListener {
 		Socket s;
 		@Override
 		public void run() {
-			
+			cstate(false);
 			// TODO Auto-generated method stub
 			logger.info("Starting logger on port " + port.toString());
 			try {
@@ -126,9 +126,11 @@ public class RealSimLive extends VisPlugin implements ActionListener {
 				BufferedReader reader;
 				try {
 					s = ls.accept();
+					cstate(true);
 					reader = new BufferedReader(new InputStreamReader(s.getInputStream()));
+					
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
+					cstate(false);
 					if(sd == 0){
 						logger.error("Something went wrong while accepting connections.\n" + e.getMessage());
 					}
@@ -173,11 +175,13 @@ public class RealSimLive extends VisPlugin implements ActionListener {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
+				cstate(false);
 				logger.info("Connection closed");
 				
 			}
 			//Close socket
 			try {
+				cstate(false);
 				ls.close();
 			} catch (IOException e) {
 				//No need to catch this.
@@ -201,8 +205,8 @@ public class RealSimLive extends VisPlugin implements ActionListener {
 	JTextField					insert_port			= new JTextField(4);
 	JComboBox					default_node;
 	
-	
-
+	JLabel lab = new JLabel("");
+	RealSimServer rss ;
 	
 	RealSim rs = null;
 	
@@ -261,23 +265,31 @@ public class RealSimLive extends VisPlugin implements ActionListener {
 		if (src == set_port) {
 			try {
 				int port = new Integer(insert_port.getText());
-				RealSimServer rss = new RealSimServer();
+				rss= new RealSimServer();
 				rss.port= port;
 				Thread l = new Thread(rss);
 				l.start();
 				controlPanel.removeAll();
-				JProgressBar bar = new JProgressBar(JProgressBar.HORIZONTAL);
-				bar.setValue(0);
-				bar.setString("Listening... (" + port + ")");
-				bar.setStringPainted(true);
-				bar.setIndeterminate(true);
-				controlPanel.add(bar);
+				controlPanel.add(lab);
 				controlPanel.add(default_node);
 				updateUI();
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
 		}
+	}
+
+	
+	private void cstate(Boolean cnn) {
+	
+		if(!cnn){
+			lab.setText("Listening... (" + rss.port + ")");
+		} else {
+			lab.setText("Connected");
+		}
+			
+		
+		
 	}
 	
 
