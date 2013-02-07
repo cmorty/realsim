@@ -60,22 +60,39 @@
 package de.fau.cooja.plugins.springlayout;
 
 
-import java.util.*;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.ConcurrentModificationException;
+import java.util.Map;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 
-
-import java.awt.*;
-import java.awt.event.*;
-
+import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-
 import javax.swing.JToggleButton;
 
 import org.apache.log4j.Logger;
-
 
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.GUI;
@@ -83,8 +100,8 @@ import se.sics.cooja.Mote;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.VisPlugin;
-import se.sics.cooja.radiomediums.DirectedGraphMedium;
 import se.sics.cooja.radiomediums.DGRMDestinationRadio;
+import se.sics.cooja.radiomediums.DirectedGraphMedium;
 
 class Node {
 	int		id;
@@ -150,9 +167,41 @@ class Edge {
 		this.lqi = lqi;
 	}
 	
+	public Pair<Integer, Integer> getPair(){
+		return new Pair<Integer, Integer>(src.id, dst.id);
+	}
+	
 }
 
-class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionListener {
+class Pair<L,R> {
+
+	  private final L left;
+	  private final R right;
+
+	  public Pair(L left, R right) {
+	    this.left = left;
+	    this.right = right;
+	  }
+
+	  public L getLeft() { return left; }
+	  public R getRight() { return right; }
+
+	  @Override
+	  public int hashCode() { return left.hashCode() ^ right.hashCode(); }
+
+	  @Override
+	  public boolean equals(Object o) {
+	    if (o == null) return false;
+	    if (!(o instanceof Pair)) return false;
+	    @SuppressWarnings("unchecked")
+		Pair<L, R> pairo = (Pair<L, R>) o;
+	    return this.left.equals(pairo.getLeft()) &&
+	           this.right.equals(pairo.getRight());
+	  }
+
+}
+
+class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionListener {
 	private static Logger	logger	= Logger.getLogger(SpringLayout.class);
 	
 	enum Elength {
@@ -161,38 +210,37 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 	
 	private static final long	serialVersionUID	= 1L;
 	public static Elength		view				= Elength.RSSI;
-	public static double		scale				= 1.0;
+	public static int			scale				= 10;
 	SpringLayout				graph;
-	private ArrayList<Node>		nodes				= new ArrayList<Node>();
-	private ArrayList<Edge>		edges				= new ArrayList<Edge>();
+	private Map<Integer, Node>	nodes				 = new  ConcurrentHashMap<Integer, Node>();
+	private Map<Pair<Integer, Integer> , Edge> edges = new ConcurrentHashMap<Pair<Integer, Integer> , Edge>();
 	Thread						relaxer;
 	Simulation					sim;
 	boolean						changed				= true;
+	Image                       offscreen;
+	Node						pick;
+	boolean						pickfixed;
+	
+	Dimension					offscreensize;
+	
+	Semaphore					paintSem = new Semaphore(1);
 	
 	public GraphPanel(SpringLayout graph, Simulation sim) {
 		this.graph = graph;
 		this.sim = sim;
 		addMouseListener(this);
+		offscreensize = getSize();
+		offscreen = createImage(offscreensize.width, offscreensize.height);
 	}
 	
 	// /////////////////
 	
-	protected Node getNode(int id) {
-		for (Node nd : nodes) {
-			if (nd.id == id) {
-				return nd;
-			}
-		}
-		return null;
-		// return addNode(id);
-	}
 	
-	public synchronized Node addNode(int id) {
-		logger.info("Addn: " + id);
+	public Node addNode(Integer id) {
+		
 		Node n;
-		n = getNode(id);
-		if (n != null)
-			return n;
+		n = nodes.get(id);
+		if (n != null)	return n;
 		
 		n = new Node();
 		n.x = 10 + 380 * Math.random();
@@ -206,28 +254,22 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 			n.y = graph.getHeight() / 2;
 		}
 		
-		nodes.add(n);
+		nodes.put(new Integer(id), n);
 		return n;
 	}
 	
-	public synchronized void removeNode(int id) {
-		removeNode(getNode(id));
-	}
-	
-	public synchronized void removeNode(Node n) {
-		
-		// Get rid of the edges first.
-		for (Edge e : edges) {
-			if (e.src == n || e.dst == n) {
-				removeEdge(e);
-			}
-		}
-		nodes.remove(n);
+	public void removeNode(Integer id) {
+		logger.info("Removing Node: " +id);
+		nodes.remove(id);
 		
 	}
+
 	
-	public synchronized void shake() {
-		for (Node n : nodes) {
+	
+	
+	
+	public void shake() {
+		for (Node n : nodes.values()) {
 			if (!n.fixed) {
 				n.x += 80 * Math.random() - 40;
 				n.y += 80 * Math.random() - 40;
@@ -238,58 +280,64 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 	// /////////////////7
 	
 	public Edge[] getEdges() {
-		return edges.toArray(new Edge[0]);
+		return edges.values().toArray(new Edge[0]);
 	}
 	
-	public synchronized void resetEdges() {
-		for (Edge e : edges) {
+	public  void resetEdges() {
+		for (Edge e : edges.values()) {
 			e.set = false;
 		}
 	}
 	
-	public synchronized void removeUnsetEdges() {
-		@SuppressWarnings("unchecked")
-		ArrayList<Edge> clone = (ArrayList<Edge>) edges.clone();
-		for (Edge e : clone) { // Need to clone due to modification
+	public  void removeUnsetEdges() {
+		for (Edge e : edges.values()) { // Need to clone due to modification
 			if (!e.set) {
-				removeEdge(e);
+				edges.remove(e.getPair());
 			}
 		}
 	}
 	
-	public synchronized void removeEdge(Edge e) {
+	public void removeEdge(Edge e) {
 		if (e.co != null) {
 			e.co.co = null;
 		}
 		logger.info("Remove " + e.toString());
-		edges.remove(e);
+		edges.remove(e.getPair());
 		
 	}
 	
-	public synchronized void setEdge(int src, int dst, double rssi, double lqi) {
-		Edge e = null;
+	
+	
+	Pair<Integer, Integer> getPair(int a, int b){
+		return new Pair<Integer, Integer>(new Integer(a), new Integer(b));
+	}
+	
+	public void setEdge(Integer src, Integer dst, double rssi, double lqi) {
+		
 		Node snode, dnode;
 		
-		snode = getNode(src);
-		dnode = getNode(dst);
+		snode = nodes.get(src);
+		dnode = nodes.get(dst);
 		
 		if (snode == null || dnode == null) {
-			logger.error("Failed to find source (" + src + ") or dest-node (" + dst + ").");
+			String s = "";
+			for(Integer i: nodes.keySet()) s = s + " " + i.toString() ;
+			
+			logger.error("Failed to find source (" + src + ") or dest-node (" + dst + ") - got:"  + s);
+			
 			return;
 		}
 		
-		for (Edge te : edges) {
-			if (te.src == snode && te.dst == dnode) {
-				e = te;
-			}
-		}
+		Pair<Integer, Integer> eKey = getPair(src, dst);
+		Edge e = edges.get(eKey);
+		
 		
 		if (e == null) {
 			e = new Edge();
 			e.src = snode;
 			e.dst = dnode;
-			edges.add(e);
-			Edge te = getEdge(dst, src);
+			edges.put(eKey, e);
+			Edge te = edges.get(getPair(dst, src));
 			if (te != null) {
 				e.co = te;
 				te.co = e;
@@ -303,20 +351,13 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		
 	}
 	
-	protected synchronized Edge getEdge(int src, int dst) {
-		for (Edge ed : edges) {
-			if (ed.src.id == src && ed.dst.id == dst) {
-				return ed;
-			}
-		}
-		
-		return null;
+	
+	public Collection<Node> getNodes() {
+		return nodes.values();
 	}
 	
-	public ArrayList<Node> getNodes() {
-		@SuppressWarnings("unchecked")
-		ArrayList<Node> clone = (ArrayList<Node>) nodes.clone();
-		return clone;
+	public Set<Integer> getNodeIds() {
+		return nodes.keySet();
 	}
 	
 	// /////////////////////////////////////////////////////////////////
@@ -325,11 +366,13 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		Thread me = Thread.currentThread();
 		while (relaxer == me) {
 			relax();
+			paintImage();
 			repaint();
 			try {
-				for (Node n : nodes) {
-					if (n != null && sim.getMoteWithID(n.id) != null) {
-						sim.getMoteWithID(n.id).getInterfaces().getPosition().setCoordinates(n.x / 50, n.y / 50, 0);
+				for (Node n : nodes.values()) {
+					Mote m = sim.getMoteWithID(n.id);
+					if (m != null) {
+						m.getInterfaces().getPosition().setCoordinates(n.x / 50, n.y / 50, 0);
 					}
 				}
 			} catch (ConcurrentModificationException e) {
@@ -344,14 +387,15 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		}
 	}
 	
+	
+	
 	synchronized void relax() {
-		for (int i = 0; i < edges.size(); i++) {
-			Edge e = edges.get(i);
+		for (Edge e : edges.values()) {
 			double vx = e.dst.x - e.src.x;
 			double vy = e.dst.y - e.src.y;
 			double len = Math.sqrt(vx * vx + vy * vy);
 			len = (len == 0) ? .0001 : len;
-			double f = (edges.get(i).len(view) - len) / (len * 3);
+			double f = (e.len(view) * scale / 10  - len) / (len * 3);
 			double dx = f * vx;
 			double dy = f * vy;
 			// I-Regler
@@ -361,16 +405,14 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 			e.src.dy += -dy;
 		}
 		
-		for (int i = 0; i < nodes.size(); i++) {
-			Node n1 = nodes.get(i);
+		for (Node n1 : nodes.values()) {
 			double dx = 0;
 			double dy = 0;
 			
-			for (int j = 0; j < nodes.size(); j++) {
-				if (i == j) {
+			for (Node n2 : nodes.values()) {
+				if (n1 == n2) {
 					continue;
 				}
-				Node n2 = nodes.get(j);
 				double vx = n1.x - n2.x;
 				double vy = n1.y - n2.y;
 				double len = vx * vx + vy * vy;
@@ -391,8 +433,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		}
 		
 		Dimension d = getSize();
-		for (int i = 0; i < nodes.size(); i++) {
-			Node n = nodes.get(i);
+		for (Node n : nodes.values()) {
 			if (!n.fixed) {
 				if (Math.abs(Math.max(-10, Math.min(10, n.dx))) > 0.5) {
 					n.x += Math.max(-10, Math.min(10, n.dx));
@@ -418,11 +459,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		
 	}
 	
-	Node		pick;
-	boolean		pickfixed;
-	Image		offscreen;
-	Dimension	offscreensize;
-	Graphics	offgraphics;
+	
 	
 	final Color	fixedColor	= Color.red;
 	final Color	selectColor	= Color.red;
@@ -444,30 +481,33 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		g.drawString(n.lbl, x - (w - 10) / 2, (y - (h - 4) / 2) + fm.getAscent());
 	}
 	
-	public synchronized void update(Graphics g) {
+	
+	void paintImage(){
+		
 		Dimension d = getSize();
-		if ((offscreen == null) || (d.width != offscreensize.width) || (d.height != offscreensize.height)) {
-			offscreen = createImage(d.width, d.height);
-			offscreensize = d;
-			if (offgraphics != null) {
-				offgraphics.dispose();
-			}
-			offgraphics = offscreen.getGraphics();
-			offgraphics.setFont(getFont());
+		if(offscreen == null || offscreensize.width != d.width || offscreensize.height != d.height ){
+			if(offscreen != null) offscreen.getGraphics().dispose();
+					
 		}
+		if(d.width < 1 || d.height < 1 ) return;
+		Image tmp = createImage(d.width, d.height);
+		if(tmp == null) return;
+		
+		Graphics offgraphics = tmp.getGraphics();
+		offgraphics.setFont(getFont());
 		
 		offgraphics.setColor(getBackground());
 		offgraphics.fillRect(0, 0, d.width, d.height);
-		for (int i = 0; i < edges.size(); i++) {
-			Edge e = edges.get(i);
+		
+		for (Edge e : edges.values()) {
 			int x1 = (int) e.src.x;
 			int y1 = (int) e.src.y;
 			int x2 = (int) e.dst.x;
 			int y2 = (int) e.dst.y;
-			if(x1 > x2 || (x1== x2 && y1 > y2)) continue;
+			if(e.co != null && x1 > x2 || (x1== x2 && y1 > y2)) continue;
 			
 			
-			int len = (int) Math.abs(Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2)) - e.len(view));
+			int len = (int) Math.abs(Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2)) - e.len(view) * scale / 10);
 			offgraphics.setColor((len < 10) ? arcColor1 : (len < 20 ? arcColor2 : arcColor3));
 			offgraphics.drawLine(x1, y1, x2, y2);
 			offgraphics.drawString(String.valueOf(e.text(view)), x1 + (x2 - x1) / 2, y1 + (y2 - y1) / 2);
@@ -475,12 +515,35 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		}
 		
 		FontMetrics fm = offgraphics.getFontMetrics();
-		for (int i = 0; i < nodes.size(); i++) {
-			paintNode(offgraphics, nodes.get(i), fm);
+		for (Node n : nodes.values()) {
+			paintNode(offgraphics, n, fm);
 		}
+		offscreen = tmp;
+		offscreensize = d;
+		//if(oldgraph != null) oldgraph.dispose();
 		// System.out.println("Update");
-		g.drawImage(offscreen, 0, 0, null);
+
+	}	
+/*
+	@Override
+	public void update(Graphics g) {
+		super.update(g);
+		Dimension d = getSize();
+		if ((d.width != offscreensize.width) || (d.height != offscreensize.height)) paintImage();
+		if(offscreen != null) 	g.drawImage(offscreen, 0, 0, null);
+	
+	}*/
+	
+	@Override
+	public void  paintComponent( Graphics g ){
+		
+		//Dimension d = getSize();
+		//if ((d.width != offscreensize.width) || (d.height != offscreensize.height)) paintImage();
+		 ((Graphics2D)g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		if(offscreen != null) 	g.drawImage(offscreen, 0, 0, null);
+
 	}
+	
 	
 	// 1.1 event handling
 	public void mouseClicked(MouseEvent e) {
@@ -491,8 +554,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		double bestdist = Double.MAX_VALUE;
 		int x = e.getX();
 		int y = e.getY();
-		for (int i = 0; i < nodes.size(); i++) {
-			Node n = nodes.get(i);
+		for (Node n : nodes.values()) {
 			double dist = (n.x - x) * (n.x - x) + (n.y - y) * (n.y - y);
 			if (dist < bestdist) {
 				pick = n;
@@ -500,7 +562,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 			}
 		}
 		if (pick == null) {
-			repaint();
+			//repaint();
 			e.consume();
 			return;
 		}
@@ -508,7 +570,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		pick.fixed = true;
 		pick.x = x;
 		pick.y = y;
-		repaint();
+		//repaint();
 		e.consume();
 	}
 	
@@ -520,7 +582,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 			pick.fixed = pickfixed;
 			pick = null;
 		}
-		repaint();
+		//repaint();
 		e.consume();
 	}
 	
@@ -534,7 +596,7 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 		if (pick != null) {
 			pick.x = e.getX();
 			pick.y = e.getY();
-			repaint();
+			//repaint();
 			e.consume();
 		}
 	}
@@ -550,6 +612,12 @@ class GraphPanel extends Panel implements Runnable, MouseListener, MouseMotionLi
 	public void stop() {
 		relaxer = null;
 	}
+
+	public Node getNode(int id) {
+		return nodes.get(new Integer(id));
+	}
+
+
 	
 }
 
@@ -566,8 +634,8 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 	Simulation					sim;
 	DirectedGraphMedium			radioMedium			= null;
 	
-	Button						clear				= new Button("Clear");
-	Button						shake				= new Button("Shake");
+	JButton						clear				= new JButton("Clear");
+	JButton						shake				= new JButton("Shake");
 	ComboBoxItem[]				comboBoxItems		= { 
 			new ComboBoxItem("RSSI", GraphPanel.Elength.RSSI),
 			new ComboBoxItem("RSSI (Max)", GraphPanel.Elength.RSSI_max), 
@@ -575,8 +643,11 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 			new ComboBoxItem("LQI (Max)", GraphPanel.Elength.LQI_max) };
 	
 	JComboBox					layout				= new JComboBox(comboBoxItems);
-	Button						zoom_in				= new Button("+");
-	Button						zoom_out			= new Button("-");
+	
+	
+	JButton						zoom_in				= new JButton("+");
+	JLabel						zoom_lab			= new JLabel("1");
+	JButton						zoom_out			= new JButton("-");
 	
 	JToggleButton				pause				= new JToggleButton("Pause");
 	JToggleButton				max_min				= new JToggleButton("Avrg View");
@@ -636,12 +707,14 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 		
 		controlPanel.add(zoom_in);
 		zoom_in.addActionListener(this);
+		controlPanel.add(zoom_lab);
 		controlPanel.add(zoom_out);
 		zoom_out.addActionListener(this);
+		
+		
 		controlPanel.add(pause);
 		pause.addActionListener(this);
-		controlPanel.add(max_min);
-		max_min.addActionListener(this);
+
 		
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setLocation(510, 0);
@@ -689,10 +762,10 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 		if (src == pause) {
 			if (!pause.getModel().isSelected()) {
 				panel.start();
-				repaint();
+				//repaint();
 			} else {
 				panel.stop();
-				repaint();
+				//repaint();
 			}
 		}
 		if (src == layout) {
@@ -700,14 +773,16 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 		}
 		
 		if (src == zoom_in) {
-			GraphPanel.scale += 0.1;
-			repaint();
+			GraphPanel.scale += 1;
+			zoom_lab.setText((new Float((float)GraphPanel.scale/10)).toString() );
+			//repaint();
 		}
 		if (src == zoom_out) {
-			if (GraphPanel.scale > 0.1) {
-				GraphPanel.scale -= 0.1;
+			if (GraphPanel.scale > 1) {
+				GraphPanel.scale -= 1;
+				zoom_lab.setText((new Float((float)GraphPanel.scale/10)).toString() );
 			}
-			repaint();
+			//repaint();
 		}
 	}
 	
@@ -736,20 +811,24 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 	
 	void updateMotes() {
 		logger.info("updating motes");
-		ArrayList<Node> nds = panel.getNodes();
+		ArrayList<Integer> nds = new ArrayList<Integer>(panel.getNodeIds());
 		
 		for (Mote m : sim.getMotes()) {
-			Node nd;
-			nd = panel.getNode(m.getID());
-			if (nd == null) { // Mote does not exist -> Add
+			Integer id = m.getID();
+			logger.debug("Checking Node" + id);
+			
+			
+			if (!nds.contains(id)) { // Mote does not exist -> Add
+				logger.debug("Adding Node" +m.getID());
 				panel.addNode(m.getID());
 			} else { // Mote exists -> Do net remove it later
-				nds.remove(nd);
+				logger.debug("Not removing Node" +m.getID());
+				nds.remove(id);
 			}
 			
 		}
 		
-		for (Node n : nds) {
+		for (int n : nds) {
 			panel.removeNode(n);
 		}
 	}
