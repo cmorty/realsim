@@ -113,6 +113,7 @@ class Node {
 	double lastdx = 0;
 	double lastdy = 0;
 	boolean	fixed = false;
+	boolean damp = false;
 	String	lbl;
 }
 
@@ -385,7 +386,7 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 						Position pos = m.getInterfaces().getPosition();
 						double newx = n.x / graphToCoojaScale;
 						double newy = n.y / graphToCoojaScale;
-						if(Math.abs(pos.getXCoordinate() - newx) > (1 / graphToCoojaScale) ||  Math.abs(pos.getYCoordinate() - newy) > (1  / graphToCoojaScale)) 
+						if(Math.abs(pos.getXCoordinate() - newx) > (2/graphToCoojaScale) ||  Math.abs(pos.getYCoordinate() - newy) > (2/graphToCoojaScale) ) 
 							pos.setCoordinates(newx, newy, 0);
 					}
 				}
@@ -457,11 +458,17 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 		for (Node n : nodes.values()) {
 			
 			// Suppress swinging
-			if((n.lastdx > 0) ^ (n.dx > 0)){
-				n.dx /=2;
+			//Damp if there is a change in direction
+			if(((n.lastdx > 0) ^ (n.dx > 0)) || (n.lastdy > 0) ^ (n.dy > 0) ){
+				n.damp = true;
 			}
-			if((n.lastdy > 0) ^ (n.dy > 0) ){
-				n.dy /=2;
+			//Don't damp if moving a lot.
+			if(n.dx > 2 || n.dy > 2){
+				n.damp = false;
+			}
+			if(n.damp ){
+				n.dx /= 4;
+				n.dy /= 4;
 			}
 			
 			
@@ -579,22 +586,37 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 	}
 	
 	
-	// 1.1 event handling
-	public void mouseClicked(MouseEvent e) {
-	}
-	
-	public void mousePressed(MouseEvent e) {
-		addMouseMotionListener(this);
-		double bestdist = Double.MAX_VALUE;
+	//Mouse-stuff
+	private Node getNextMote(MouseEvent e, double limit){		
+		double bestdist = (limit < Double.MAX_VALUE / 4) ? limit * limit: limit;
+		Node best = null;
 		int x = e.getX();
 		int y = e.getY();
 		for (Node n : nodes.values()) {
 			double dist = (n.x - x) * (n.x - x) + (n.y - y) * (n.y - y);
 			if (dist < bestdist) {
-				pick = n;
+				best = n;
 				bestdist = dist;
 			}
 		}
+		return best;
+	}
+	
+	
+	public void mouseClicked(MouseEvent e) {
+		if(e.getClickCount() == 2){
+			Node nn = getNextMote(e,30);
+			if(nn != null){
+				nn.fixed = ! nn.fixed;
+			}
+		}
+		e.consume();
+	}
+	
+	public void mousePressed(MouseEvent e) {
+		addMouseMotionListener(this);
+
+		pick = getNextMote(e, Double.MAX_VALUE);
 		if (pick == null) {
 			//repaint();
 			e.consume();
@@ -602,8 +624,7 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 		}
 		pickfixed = pick.fixed;
 		pick.fixed = true;
-		pick.x = x;
-		pick.y = y;
+		
 		//repaint();
 		e.consume();
 	}
