@@ -224,12 +224,19 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 	private Map<Pair<Integer, Integer> , Edge> edges = new ConcurrentHashMap<Pair<Integer, Integer> , Edge>();
 	Thread						relaxer;
 	Simulation					sim;
-	boolean						changed				= true;
-	Image                       offscreen;
+	
+	boolean						changed				= true;	
+	Image                       offscreen[]		    = new Image[2];
+	int							offscreen_act		= 0;
+	Dimension					offscreensize[]     = new Dimension[2];
+	
+	
 	Node						pick;
 	boolean						pickfixed;
 	
-	Dimension					offscreensize;
+	
+	final int  					graphToCoojaScale = 50;
+	
 	
 	Semaphore					paintSem = new Semaphore(1);
 	
@@ -237,8 +244,8 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 		this.graph = graph;
 		this.sim = sim;
 		addMouseListener(this);
-		offscreensize = getSize();
-		offscreen = createImage(offscreensize.width, offscreensize.height);
+		offscreensize[offscreen_act]  = getSize();
+		offscreen[offscreen_act] = createImage(offscreensize[offscreen_act].width, offscreensize[offscreen_act].height);
 	}
 	
 	// /////////////////
@@ -252,8 +259,8 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 		
 		n = new Node();
 		Position pos = m.getInterfaces().getPosition();
-		n.x = pos.getXCoordinate() * 50 ;
-		n.y = pos.getYCoordinate() * 50;
+		n.x = pos.getXCoordinate() * graphToCoojaScale ;
+		n.y = pos.getYCoordinate() * graphToCoojaScale;
 		n.id = m.getID();
 		n.lbl = ((Integer) n.id).toString();
 		// Fix first node
@@ -375,7 +382,11 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 				for (Node n : nodes.values()) {
 					Mote m = sim.getMoteWithID(n.id);
 					if (m != null) {
-						m.getInterfaces().getPosition().setCoordinates(n.x / 50, n.y / 50, 0);
+						Position pos = m.getInterfaces().getPosition();
+						double newx = n.x / graphToCoojaScale;
+						double newy = n.y / graphToCoojaScale;
+						if(Math.abs(pos.getXCoordinate() - newx) > (1 / graphToCoojaScale) ||  Math.abs(pos.getYCoordinate() - newy) > (1  / graphToCoojaScale)) 
+							pos.setCoordinates(newx, newy, 0);
 					}
 				}
 			} catch (ConcurrentModificationException e) {
@@ -396,7 +407,7 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 	}
 	
 	
-	synchronized void relax() {
+	void relax() {
 		//Calculate pressure on edges
 		for (Edge e : edges.values()) {
 			
@@ -507,15 +518,24 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 	void paintImage(){
 		
 		Dimension d = getSize();
-		if(offscreen == null || offscreensize.width != d.width || offscreensize.height != d.height ){
-			if(offscreen != null) offscreen.getGraphics().dispose();
-					
-		}
 		if(d.width < 1 || d.height < 1 ) return;
-		Image tmp = createImage(d.width, d.height);
-		if(tmp == null) return;
 		
-		Graphics offgraphics = tmp.getGraphics();
+		
+		//Screenmanagement
+		int wscreen = (offscreen_act == 0) ? 1 : 0;
+		Image pscreen = offscreen[wscreen];
+		
+		if(pscreen == null || offscreensize[wscreen].width != d.width || offscreensize[wscreen].height != d.height ){
+			if(pscreen != null) pscreen.getGraphics().dispose();
+			pscreen = createImage(d.width, d.height);
+			if(pscreen == null) return;
+			offscreen[wscreen] = pscreen;
+			offscreensize[wscreen] = d;
+		}
+		
+			
+		
+		Graphics offgraphics = pscreen.getGraphics();
 		offgraphics.setFont(getFont());
 		
 		offgraphics.setColor(getBackground());
@@ -540,21 +560,13 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 		for (Node n : nodes.values()) {
 			paintNode(offgraphics, n, fm);
 		}
-		offscreen = tmp;
-		offscreensize = d;
+		offscreen_act = wscreen;
+		
 		//if(oldgraph != null) oldgraph.dispose();
 		// System.out.println("Update");
 
 	}	
-/*
-	@Override
-	public void update(Graphics g) {
-		super.update(g);
-		Dimension d = getSize();
-		if ((d.width != offscreensize.width) || (d.height != offscreensize.height)) paintImage();
-		if(offscreen != null) 	g.drawImage(offscreen, 0, 0, null);
-	
-	}*/
+
 	
 	@Override
 	public void  paintComponent( Graphics g ){
@@ -562,7 +574,7 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 		//Dimension d = getSize();
 		//if ((d.width != offscreensize.width) || (d.height != offscreensize.height)) paintImage();
 		 ((Graphics2D)g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		if(offscreen != null) 	g.drawImage(offscreen, 0, 0, null);
+		if(offscreen != null) 	g.drawImage(offscreen[offscreen_act], 0, 0, null);
 
 	}
 	
@@ -627,7 +639,7 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 	}
 	
 	public void start() {
-		relaxer = new Thread(this);
+		relaxer = new Thread(this, "Springlayout-Relaxer");
 		relaxer.start();
 	}
 	
