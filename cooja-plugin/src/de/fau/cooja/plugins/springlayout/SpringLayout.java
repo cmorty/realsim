@@ -100,18 +100,24 @@ import se.sics.cooja.Mote;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.VisPlugin;
+import se.sics.cooja.interfaces.Position;
 import se.sics.cooja.radiomediums.DGRMDestinationRadio;
 import se.sics.cooja.radiomediums.DirectedGraphMedium;
 
 class Node {
 	int		id;
-	double	x;
-	double	y;
-	double	dx;
-	double	dy;
-	boolean	fixed;
+	double	x = 0;
+	double	y = 0;
+	double	dx = 0;
+	double	dy = 0;
+	double lastdx = 0;
+	double lastdy = 0;
+	boolean	fixed = false;
 	String	lbl;
 }
+
+
+
 
 class Edge {
 	Node			src;
@@ -120,23 +126,25 @@ class Edge {
 	double			rssi;
 	double			lqi;
 	boolean			set			= true;
-	static double	rssi_max	= 300;
+	static double	rssi_max	= -300;
 	static double	lqi_max		= 300;
 	
 	public double len(GraphPanel.Elength el) {
+		double orssi = rssi_max;
+		double olqi = lqi_max;
+		if(co != null){
+			orssi = co.rssi;
+			olqi = co.lqi;
+		}
 		switch (el) {
 			case RSSI:
-				return -rssi;
+				return -(rssi + orssi) / 2;
 			case RSSI_max:
-				double omax;
-				omax = (co != null) ? co.rssi : rssi_max;
-				return -Math.min(rssi, omax);
+				return -Math.min(rssi, orssi);
 			case LQI:
-				return lqi;
+				return (lqi + olqi) / 2;
 			case LQI_max:
-				omax = (co != null) ? co.lqi : lqi_max;
-				return Math.max(lqi, omax);
-				
+				return Math.max(lqi, olqi);
 		}
 		throw new IllegalArgumentException();
 	}
@@ -210,7 +218,7 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 	
 	private static final long	serialVersionUID	= 1L;
 	public static Elength		view				= Elength.RSSI;
-	public static int			scale				= 10;
+	public static int			scale				= 25;
 	SpringLayout				graph;
 	private Map<Integer, Node>	nodes				 = new  ConcurrentHashMap<Integer, Node>();
 	private Map<Pair<Integer, Integer> , Edge> edges = new ConcurrentHashMap<Pair<Integer, Integer> , Edge>();
@@ -236,25 +244,24 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 	// /////////////////
 	
 	
-	public Node addNode(Integer id) {
+	public Node addNode(Mote m) {
 		
 		Node n;
-		n = nodes.get(id);
+		n = nodes.get(m.getID());
 		if (n != null)	return n;
 		
 		n = new Node();
-		n.x = 10 + 380 * Math.random();
-		n.y = 10 + 380 * Math.random();
-		n.id = id;
-		n.lbl = ((Integer) id).toString();
+		Position pos = m.getInterfaces().getPosition();
+		n.x = pos.getXCoordinate() * 50 ;
+		n.y = pos.getYCoordinate() * 50;
+		n.id = m.getID();
+		n.lbl = ((Integer) n.id).toString();
 		// Fix first node
 		if (nodes.size() == 0) {
-			n.fixed = true;
-			n.x = graph.getWidth() / 2;
-			n.y = graph.getHeight() / 2;
+			n.fixed = true;			
 		}
 		
-		nodes.put(new Integer(id), n);
+		nodes.put(new Integer(n.id), n);
 		return n;
 	}
 	
@@ -264,15 +271,11 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 		
 	}
 
-	
-	
-	
-	
 	public void shake() {
 		for (Node n : nodes.values()) {
 			if (!n.fixed) {
-				n.x += 80 * Math.random() - 40;
-				n.y += 80 * Math.random() - 40;
+				n.x += (80 * Math.random() - 40) * scale;
+				n.y += (80 * Math.random() - 40) * scale;
 			}
 		}
 	}
@@ -387,10 +390,16 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 		}
 	}
 	
+	 
+	private double limit(double in, double lim){
+		return(Math.max(-lim, Math.min(in, lim)));
+	}
 	
 	
 	synchronized void relax() {
+		//Calculate pressure on edges
 		for (Edge e : edges.values()) {
+			
 			double vx = e.dst.x - e.src.x;
 			double vy = e.dst.y - e.src.y;
 			double len = Math.sqrt(vx * vx + vy * vy);
@@ -404,57 +413,70 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 			e.src.dx += -dx;
 			e.src.dy += -dy;
 		}
-		
+		//Seperate nodes
 		for (Node n1 : nodes.values()) {
 			double dx = 0;
 			double dy = 0;
 			
 			for (Node n2 : nodes.values()) {
-				if (n1 == n2) {
-					continue;
-				}
+				// Don't test node against itself
+				if (n1 == n2) continue;
+				// Only test nodes, that are not stringes together
+				if(nodes.containsKey(getPair(n1.id, n2.id))  ||
+						nodes.containsKey(getPair(n2.id, n1.id))) continue;
+				
+				//Calculate distence between nodes
 				double vx = n1.x - n2.x;
 				double vy = n1.y - n2.y;
-				double len = vx * vx + vy * vy;
-				if (len == 0) {
-					dx += Math.random();
-					dy += Math.random();
-				} else if (len < 100 * 100) {
-					dx += vx / len;
-					dy += vy / len;
+				if(vx > 0 || vy > 0){
+					double len =  Math.sqrt(vx * vx + vy * vy);
+					dx += vx /len ;
+					dy += vy / len ;
 				}
 			}
-			double dlen = dx * dx + dy * dy;
-			if (dlen > 0) {
-				dlen = Math.sqrt(dlen) / 2;
-				n1.dx += dx / dlen;
-				n1.dy += dy / dlen;
-			}
+			
+			
+			n1.dx +=  limit(dx * scale, .5);
+			n1.dy +=  limit(dy * scale, .5);
+			
+	
 		}
 		
 		Dimension d = getSize();
 		for (Node n : nodes.values()) {
-			if (!n.fixed) {
-				if (Math.abs(Math.max(-10, Math.min(10, n.dx))) > 0.5) {
-					n.x += Math.max(-10, Math.min(10, n.dx));
-				}
-				if (Math.abs(Math.max(-10, Math.min(10, n.dy))) > 0.5) {
-					n.y += Math.max(-10, Math.min(10, n.dy));
-				}
+			
+			// Suppress swinging
+			if((n.lastdx > 0) ^ (n.dx > 0)){
+				n.dx /=2;
 			}
+			if((n.lastdy > 0) ^ (n.dy > 0) ){
+				n.dy /=2;
+			}
+			
+			
+			if (!n.fixed) {
+				n.x += limit(n.dx, 10);		
+				n.y += limit(n.dy, 10);
+				
+			}
+			
+			//Do not move out of window
+			
 			if (n.x < 0) {
 				n.x = 0;
-			} else if (n.x > d.width) {
+			} else if (!(new Double(d.width)).isNaN() && n.x > d.width && d.width > 50) {
 				n.x = d.width;
 			}
 			if (n.y < 0) {
 				n.y = 0;
-			} else if (n.y > d.height) {
-				n.y = d.height;
+			} else if (!(new Double(d.height)).isNaN()  && n.y > d.height && d.height > 50) {
+				n.y = d.height ;
 			}
-			
-			n.dx /= 2;
-			n.dy /= 2;
+			n.lastdx = n.dx;
+			n.lastdy = n.dy;
+			if(Math.abs(n.dx) > .1) n.dx /= 2;
+			if(Math.abs(n.dy) > .1) n.dy /= 2;
+
 		}
 		
 	}
@@ -624,6 +646,7 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 @ClassDescription("Spring Layout")
 @PluginType(PluginType.SIM_PLUGIN)
 public class SpringLayout extends VisPlugin implements ActionListener, ItemListener, Observer {
+	@SuppressWarnings("unused")
 	private static Logger		logger				= Logger.getLogger(SpringLayout.class);
 	
 	private final static String failmsg = "This Plugin needs a DGRM.";
@@ -728,6 +751,7 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 		updateMotes();
 		updateEdges();
 		// Register observers
+		zoom_lab.setText((new Float((float)GraphPanel.scale/10)).toString() );
 		radioMedium.addRadioMediumObserver(this);
 		sim.addObserver(this);
 		
@@ -815,7 +839,7 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 			Integer id = m.getID();
 			
 			if (!nds.contains(id)) { // Mote does not exist -> Add			
-				panel.addNode(m.getID());
+				panel.addNode(m);
 			} else { // Mote exists -> Do net remove it later
 				nds.remove(id);
 			}
