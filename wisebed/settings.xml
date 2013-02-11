@@ -1,7 +1,7 @@
 <expconf>
 	
 	<!-- How long to reserve the Network in min  - You may use an expression -->
-	<time>60 * 12</time>
+	<time>60 * 24</time> <!-- Run 24 h -->
 	<firmware>../sky/statprinter.ihex</firmware>
 	<!-- If no motes are listed all available motes are used.
 	<mote>urn:fau:0x0001</mote>
