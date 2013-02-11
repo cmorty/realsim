@@ -22,8 +22,9 @@ class RealSimLiveConn(host:String = "localhost", port:Int = 1337, timeout:Int = 
 		def handleMsg(mi:common.Message):Unit = {
 			val log = LoggerFactory.getLogger(this.getClass)
 			//Socket stuff
-			if((socket == null || !socket.isConnected()) && lasttry + 5000 < (new Date).getTime){
+			if((lasttry + 5000 < (new Date).getTime) && (socket == null || !socket.isConnected() || out.checkError()) ){
 				lasttry = (new Date).getTime
+				if(socket != null) socket.close;
 				try{
 					log.info("Opening Socket: " + host + ":" + port)
 					val addr = InetAddress.getByName(host);
@@ -32,13 +33,18 @@ class RealSimLiveConn(host:String = "localhost", port:Int = 1337, timeout:Int = 
 					out = new PrintStream(socket.getOutputStream)
 					
 				} catch {
-					case e:Throwable =>
-						log.error("Failed to open socket " , e)
-						socket = null 
+					case e:Throwable => 
+						if(e.toString() == "java.net.ConnectException: Connection refused"){
+								log.info("Failed to connect. Waiting 5 sec.")
+						} else {
+							log.error("Failed to open socket " , e)
+						}
+						if(socket != null) socket.close;						
+						socket = null;						 
 				}
 			}
 			
-			if(socket != null && socket.isConnected()){
+			if(socket != null && socket.isConnected() && !out.checkError()){
 				
 				val msg =  mi.dataString.split(" ")
 					
@@ -57,7 +63,7 @@ class RealSimLiveConn(host:String = "localhost", port:Int = 1337, timeout:Int = 
 					}
 					
 				}
-			}
+			} 			
 		}
 	}
 	
