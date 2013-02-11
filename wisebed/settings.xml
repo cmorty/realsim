@@ -7,6 +7,12 @@
 	<mote>urn:fau:0x0001</mote>
 	<mote>urn:fau:0x0002</mote>
 	-->
-	<output>realsim.out</output>
-	
+
+
+	<output>tubs.out</output>
+	<!-- Connect to RealSim Server -->
+	<rsClient>
+		<host>localhost</host>
+		<port>1337</port>
+	</rsClient>
 </expconf>
