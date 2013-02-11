@@ -31,7 +31,7 @@ object RealsimClient {
 	val time = 30 * 60
 
 	def main(args: Array[String]) {
-		Logging.setLoggingDefaults(Level.DEBUG) // new PatternLayout("%-11d{HH:mm:ss,SSS} %-5p - %m%n"))
+		Logging.setLoggingDefaults(Level.INFO) // new PatternLayout("%-11d{HH:mm:ss,SSS} %-5p - %m%n"))
 
 		//Get Config
 
@@ -43,87 +43,104 @@ object RealsimClient {
 
 		val prefix = (config \ "prefix").text
 		val login = (config \ "login").text
-		val password = (config \ "password").text
+		val password = (config \ "pass").text
 
 		//Get Settings
 		val setfile = { if (args.length > 0) args(0) else "settings.xml" }
 		val settings = XML.load(setfile)
 
-		var exp_motes = (settings \ "mote").map(_.text.trim)
+		val exp_motes = (settings \ "mote").map(_.text.trim)
 		val exp_time = new FormulaParser().evaluate((settings \ "time").text.trim).toInt
 		val exp_firmware = (settings \ "firmware").text.trim
 		val logname = (settings \ "output").text.trim
+		val rsClient = (settings \ "rsClient")
 		
 
 		//Get Motes
-		log.debug("Starting Testbed")
+		log.info("Starting Testbed")
 		val tb = new Testbed(smEndpointURL)
-		log.debug("Requesting Motes")
-		val motesAvail = tb.getnodes()
-		log.debug("Motes: " + motesAvail.mkString(", "))
+		log.info("Requesting Motes")
+		val motesAvail = tb.getNodes("telosb")
+		log.info("Motes: " + motesAvail.mkString(", "))
 
 		
-		if(exp_motes.size  == 0) exp_motes = motesAvail
 		
 		if (!exp_motes.forall(motesAvail.contains(_))) {
 			log.error("Not all motes available. Have: {}; Need: {} ", motesAvail.mkString(", "), exp_motes.mkString(", "))
 			sys.exit(1)
 		}
 		
+		var usemotes = {if(exp_motes.length > 0) exp_motes else motesAvail}
 		
-		log.debug("Logging in: \"" + prefix + "\"/\"" + login + "\":\"" + password + "\"")
+		log.info("Logging in: \"" + prefix + "\"/\"" + login + "\":\"" + password + "\"")
 		tb.addCredencials(prefix, login, password)
 
 		
-		log.debug("Requesting reservations")
+		log.info("Requesting reservations")
 		var res = tb.getReservations(exp_time)
 
 		def cleanup(rv: Int) {
-			log.debug("Removing Reservation")
+			log.info("Removing Reservation")
 			res.foreach(tb.freeReservation(_))
 			log.info("Exit with rv: " + rv)
 			sys.exit(rv)
 		}
 
 		for (r <- res) {
-			log.debug("Got Reservations: \n" + r.dateString() + " for " + r.getNodeURNs.mkString(", "))
+			log.info("Got Reservations: \n" + r.dateString() + " for " + r.getNodeURNs.mkString(", "))
 		}
 
+		
+		
 		if (!res.exists(_.now)) {
-			log.debug("No Reservations or in the Past- Requesting")
+			log.info("No Reservations or in the Past- Requesting")
 			val from = new GregorianCalendar
 			val to = new GregorianCalendar
 			from.add(Calendar.MINUTE, -1)
-			to.add(Calendar.MINUTE, exp_time + 8000)
-			val r = tb.makeReservation(from, to, exp_motes, "login")
-			log.debug("Got Reservations: \n" + r.dateString() + " for " + r.getNodeURNs.mkString(", "))
+			to.add(Calendar.MINUTE, exp_time)
+			val r = tb.makeReservation(from, to, usemotes, "login")
+			log.info("Got Reservations: \n" + r.dateString() + " for " + r.getNodeURNs.mkString(", "))
 			res ::= r
 		}
 
 		val exp = new Experiment(res.toList, tb)
 
-		//Add general Logger
-		exp.addMessageInput(new MessageLogger(mi => {
-			import wrappers.WrappedMessage._
-			log.info("M(" + mi.node + "): " + mi.dataString)
-		}) with MsgLiner)
+		
+		Runtime.getRuntime.addShutdownHook(new Thread {
+			override def run  {
+				log.info("Removing Reservation")
+				res.foreach(tb.freeReservation(_))
+				log.info("Waiting 1 sec to clean up.")
+				Thread.sleep(1000)
+				log.info("Going down.")
+			}
+		})
+		
+		
 
-		log.debug("Requesting Motestate")
-		val statusj = exp.areNodesAlive(exp_motes)
+
+		log.info("Requesting Motestate")
+		val statusj = exp.areNodesAlive(usemotes)
 		val status = statusj.status
 		for ((m, s) <- status) log.info(m + ": " + s)
 
 		val activemotes = (for ((m, s) <- status; if (s == Alive)) yield m).toList
 
-		//Test whether all motes ar available
-		if (!exp_motes.forall(activemotes.contains(_))) {
-			log.error("Not all motes active. Have: " +  motesAvail.mkString(", ") + "; Need: " +   exp_motes.mkString(", ") + 
-					"; Miss: " + exp_motes.filter(!activemotes.contains(_))) 
-			cleanup(1)
+		log.info("Active Motes: " +  activemotes.mkString(", "))
+		
+		
+		if(exp_motes.length > 0) {
+			//Test whether all motes are available
+			if (!exp_motes.forall(activemotes.contains(_))) {
+				log.error("Not all motes active. Have: " +  motesAvail.mkString(", ") + "; Need: " +   exp_motes.mkString(", ") + 
+						"; Miss: " + exp_motes.filter(!activemotes.contains(_))) 
+				cleanup(1)
+			}
+		} else {
+			usemotes = activemotes
 		}
 		
-		
-		log.debug("Requesting Supported Channel Handlers")
+		log.info("Requesting Supported Channel Handlers")
 		val handls = exp.supportedChannelHandlers
 
 		val setHand = "contiki"
@@ -136,25 +153,28 @@ object RealsimClient {
 
 			cleanup(1)
 		} else {
-			log.debug("Setting Handler: {}", setHand)
-			val chd = exp.setChannelHandler(activemotes, new WrappedChannelHandlerConfiguration("contiki"))
+			log.info("Setting Handler: {}", setHand)
+			val chd = exp.setChannelHandler(usemotes, new WrappedChannelHandlerConfiguration("contiki"))
 			if (!chd.success) {
 				log.error("Failed setting Handler")
 				cleanup(1)
 			}
 		}
 
-		//Go, flash go.
+	
 
-		var motes = activemotes
-if(false){
+		
+		//Go, flash go.
+		var motes = usemotes
+if(true){
 		for (t <- 1 to 5) if (motes.size > 0) {
-			log.debug("Flashing  - try " + t)
+			log.info("Flashing  - try " + t)
 			val flashj = exp.flash(exp_firmware, motes)
 			motes = flashj().filter(_._2 != MoteFlashState.OK).map(_._1).toList
 
 			if (motes.size > 0) {
 				log.error("Failed to flash nodes: " + motes.mkString(", "))
+				Thread.sleep(10000) //Sleep one sec - just in case
 			}
 		}
 		//Are there still motes to flash?
@@ -163,6 +183,18 @@ if(false){
 		}
 }
 		
+		//Add general Logger
+		
+		{
+			var ctr = 0
+			exp.addMessageInput(new MessageLogger(mi => {
+				ctr += 1 
+				if(ctr == 500) {
+					log.info("got 500 Messages")
+					ctr = 0;
+				}
+			}) with MsgLiner)
+		}
 		val dt  = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss").format(new Date);
 		
 		//Now, let's log the output. We might loose one or two messages at the beginning, but that's ok (depending on how many times we falshed)
@@ -191,15 +223,10 @@ if(false){
 		
 		
 		
-		Runtime.getRuntime.addShutdownHook(new Thread {
-			override def run  {
-				log.debug("Removing Reservation")
-				res.foreach(tb.freeReservation(_))
-				log.debug("Waiting 1 sec to clean up.")
-				Thread.sleep(1000)
-				log.debug("Going down.")
-			}
-		})
+		for(rsConf <- rsClient){
+			val rsc = new RealSimLiveConn((rsConf \ "host").text.trim, (rsConf \ "port").text.trim.toInt)
+			exp.addMessageInput(rsc)
+		}
 		
 		
 		while(exp.active){
@@ -207,9 +234,6 @@ if(false){
 			
 		}
 
-
-
-		sys.exit(0)
 		
 	}
 
