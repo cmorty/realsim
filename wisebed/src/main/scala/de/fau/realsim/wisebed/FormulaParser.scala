@@ -6,6 +6,7 @@ package de.fau.realsim.wisebed
 import scala.math._
 import scala.util.parsing.combinator._
 import scala.util.Random
+import scala.language.implicitConversions
 
 class FormulaParser(val constants: Map[String,Double] = Map(), val userFcts: Map[String,String => Double] = Map(), random: Random = new Random) extends JavaTokenParsers {
   require(constants.keySet.intersect(userFcts.keySet).isEmpty)
