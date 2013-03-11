@@ -11,7 +11,7 @@
 #include <lib/print-stats.h>
 #include <stdint.h>
 #include "statpacker.h"
-
+#include <string.h>
 
 
 

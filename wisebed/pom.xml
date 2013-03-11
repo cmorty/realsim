@@ -60,8 +60,18 @@
 			</args>
 					  <launchers>
 						<launcher>
-						  <id>foo</id>
+						  <id>main</id>
 						  <mainClass>de.fau.realsim.wisebed.RealsimClient</mainClass>
+						  <args>
+						  </args>
+						  <jvmArgs>
+							<jvmArg>-Xmx128m</jvmArg>
+							<jvmArg>-Djava.library.path=...</jvmArg>
+						  </jvmArgs>
+						</launcher>
+						<launcher>
+						  <id>setNodeID</id>
+						  <mainClass>de.fau.realsim.wisebed.SetNodeID</mainClass>
 						  <args>
 						  </args>
 						  <jvmArgs>
@@ -111,6 +121,7 @@
           	    			<workingDirectory>../sky</workingDirectory>
           					<arguments>
             					<argument>statprinter.ihex</argument>
+            					<argument>burn-nodeid.ihex</argument>
             
           					</arguments>
         				</configuration>
@@ -129,6 +140,7 @@
        				<directory>../sky</directory>
        				<includes>
           				<include>statprinter.ihex</include>
+          				<include>burn-nodeid.ihex</include>
 			        </includes>
      			</resource>
    			</resources>

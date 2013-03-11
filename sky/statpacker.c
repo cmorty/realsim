@@ -4,7 +4,7 @@
 #include "net/rime.h"
 #include "lib/list.h"
 #include "sys/energest.h"
-
+#include <string.h>
 #include "statpacker.h"
 
 #define CPY(dst, src) {memcpy(&(dst), &(src), sizeof(dst));}

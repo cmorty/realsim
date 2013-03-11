@@ -152,7 +152,7 @@ static int handlepackets(void){
 			if(n == NULL) {
 				//Continue to next;
 				bufuse[i] = 0;
-				puts("W: To many neighbours");
+				puts("W: Too many neighbours");
 				return 1;
 			}
 			memset(n, 0, sizeof(*n));
