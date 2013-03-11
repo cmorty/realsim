@@ -21,6 +21,8 @@ import de.fau.wisebed.jobs.MoteFlashState
 import scala.collection.JavaConversions._
 import java.text.SimpleDateFormat
 import java.util.Date
+import scala.collection.mutable.Buffer
+import de.fau.wisebed.messages.MessageInput
 
 
 
@@ -37,25 +39,68 @@ object RealsimClient {
 
 		val conffile = { if (args.length > 1) args(1) else "config.xml" }
 
+		log.info("Loading Wisebed config: " + conffile)
+		
 		val config = XML.load(conffile)
 
 		val smEndpointURL = (config \ "smEndpointURL").text
-
+	
 		val prefix = (config \ "prefix").text
 		val login = (config \ "login").text
 		val password = (config \ "pass").text
 
 		//Get Settings
 		val setfile = { if (args.length > 0) args(0) else "settings.xml" }
+		log.info("Loading experiment config: " + setfile)
 		val settings = XML.load(setfile)
 
 		val exp_motes = (settings \ "mote").map(_.text.trim)
+		log.info("T: " + (settings \ "time").text.trim)
 		val exp_time = new FormulaParser().evaluate((settings \ "time").text.trim).toInt
 		val exp_firmware = (settings \ "firmware").text.trim
-		val logname = (settings \ "output").text.trim
+		val outputs = (settings \ "output")
+		val rsout = (settings \ "realsim")
 		val rsClient = (settings \ "rsClient")
 		
 
+		// Generate message inputs to make sure everything is ok
+		val msgInpts = {
+			// Add normal loggers
+			val rv = Buffer[MessageInput]() 
+			val df  = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+			for(outp <- outputs){
+				val dt  = new SimpleDateFormat(outp.text.trim).format(new Date);
+				val out = new java.io.PrintWriter(dt)
+			
+				val logger = new MessageLogger(mi => {
+					import wrappers.WrappedMessage._					
+					out.println(df.format(new Date)+ " " + mi.node + ":" + mi.dataString)
+					//out.flush
+					
+				}) with MsgLiner
+				
+				logger.runOnExit({out.close})
+				rv += logger
+			}
+			
+			
+			for(rs <- rsout){
+				val fname = (rs \ "file").text.trim
+				val avg:Int = {
+					val fld = (rs \ "time").text.trim
+					if(fld.length > 0 ) new FormulaParser().evaluate(fld).toInt
+					else 10
+				}
+				rv += new RealSimFile(fname, avg);
+			}
+			for(rsConf <- rsClient){
+				rv += new RealSimLiveConn((rsConf \ "host").text.trim, (rsConf \ "port").text.trim.toInt)
+			}
+			
+			rv.toSeq
+		}
+		
+		
 		//Get Motes
 		log.info("Starting Testbed")
 		val tb = new Testbed(smEndpointURL)
@@ -77,7 +122,8 @@ object RealsimClient {
 
 		
 		log.info("Requesting reservations")
-		var res = tb.getReservations(exp_time)
+		//Three minutes to flash
+		var res = tb.getReservations(exp_time + 3) 
 
 		def cleanup(rv: Int) {
 			log.info("Removing Reservation")
@@ -97,7 +143,7 @@ object RealsimClient {
 			val from = new GregorianCalendar
 			val to = new GregorianCalendar
 			from.add(Calendar.MINUTE, -1)
-			to.add(Calendar.MINUTE, exp_time)
+			to.add(Calendar.MINUTE, exp_time + 3)
 			val r = tb.makeReservation(from, to, usemotes, "login")
 			log.info("Got Reservations: \n" + r.dateString() + " for " + r.getNodeURNs.mkString(", "))
 			res ::= r
@@ -169,7 +215,10 @@ object RealsimClient {
 if(true){
 		for (t <- 1 to 5) if (motes.size > 0) {
 			log.info("Flashing  - try " + t)
-			val flashj = exp.flash(exp_firmware, motes)
+			val flashj = {
+				if(exp_firmware != "") exp.flash(exp_firmware, motes)
+				else exp.flash(getClass.getResourceAsStream("/statprinter.ihex"), motes)
+			}
 			motes = flashj().filter(_._2 != MoteFlashState.OK).map(_._1).toList
 
 			if (motes.size > 0) {
@@ -195,43 +244,15 @@ if(true){
 				}
 			}) with MsgLiner)
 		}
-		val dt  = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss").format(new Date);
 		
-		//Now, let's log the output. We might loose one or two messages at the beginning, but that's ok (depending on how many times we falshed)
-		val out = new java.io.PrintWriter(dt + logname)
-
-
-		val logger = new MessageLogger(mi => {
-			import wrappers.WrappedMessage._
-			val df  = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-			out.println(df.format(new Date)+ " " + mi.node + ":" + mi.dataString)
-			//Flush, so one can terminate an any time
-			out.flush
-			
-		}) with MsgLiner
+		//Add other message inputs
+		msgInpts.foreach(exp.addMessageInput(_))
 		
 		
-		
-		
-		val rsim = new RealSimFile(dt + "log.rs", 10);
-
-		logger.runOnExit({out.close})
-		
-
-		exp.addMessageInput(logger)
-		exp.addMessageInput(rsim)
-		
-		
-		
-		for(rsConf <- rsClient){
-			val rsc = new RealSimLiveConn((rsConf \ "host").text.trim, (rsConf \ "port").text.trim.toInt)
-			exp.addMessageInput(rsc)
-		}
-		
-		
-		while(exp.active){
-			Thread.sleep(1000);
-			
+		val endt = new GregorianCalendar
+		endt.add(Calendar.MINUTE, exp_time)
+		while(exp.active && endt.before(new GregorianCalendar)){
+			Thread.sleep(1000);			
 		}
 
 		

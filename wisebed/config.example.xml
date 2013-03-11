@@ -1,7 +1,5 @@
 <conf>
 	<smEndpointURL>http://myserver:10011/sessions</smEndpointURL> 
-	<snaaEndpointURL>http://myserver:20011/snaa</snaaEndpointURL>
-	<rsEndpointURL>http://myserver:30011/rs</rsEndpointURL>
 	<prefix>urn:foo</prefix>
 	<login>mylogin</login>
 	<pass>mypass</pass>
