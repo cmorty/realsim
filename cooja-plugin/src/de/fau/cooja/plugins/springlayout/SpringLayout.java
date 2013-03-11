@@ -74,6 +74,7 @@ import java.awt.event.ItemListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.ConcurrentModificationException;
@@ -126,26 +127,37 @@ class Edge {
 	Edge			co			= null;
 	double			rssi;
 	double			lqi;
+	double 			prr;
 	boolean			set			= true;
 	static double	rssi_min	= -20;
 	static double	lqi_min		= 20;
+	static double 	prr_min 	= 0;
+	
+	static DecimalFormat fm = new DecimalFormat("0.00"); 
 	
 	public double len(GraphPanel.Elength el) {
 		double orssi = rssi_min;
 		double olqi = lqi_min;
+		double oprr = prr_min;
 		if(co != null){
 			orssi = co.rssi;
 			olqi = co.lqi;
+			oprr = co.prr;
 		}
 		switch (el) {
 			case RSSI:
 				return (100*100)/(-(rssi + orssi) / 2);
-			case RSSI_max:
+			case RSSI_min:
 				return (100*100)/(-Math.max(rssi, orssi));
 			case LQI:
 				return (100*100)/((lqi + olqi) / 2);
-			case LQI_max:
+			case LQI_min:
 				return (100*100)/(Math.min(lqi, olqi));
+			case PRR:
+				return (100 * 100) / ( ( ( (prr + oprr) / 2) + 0.2) * 100 );
+			case PRR_min:
+				return (100 * 100)/((Math.min(prr, oprr) + 0.2) * 100);
+				
 		}
 		throw new IllegalArgumentException();
 	}
@@ -153,7 +165,7 @@ class Edge {
 	public String text(GraphPanel.Elength el, Node n) {
 		switch (el) {
 			case RSSI:
-			case RSSI_max:
+			case RSSI_min:
 				if(n == dst){
 					return new Integer((int) rssi).toString();
 				} if( n == src ){
@@ -162,11 +174,20 @@ class Edge {
 					throw new IllegalArgumentException("Node not part of the edge");
 				}
 			case LQI:
-			case LQI_max:
+			case LQI_min:
 				if(n == dst){
 					return new Integer((int) lqi).toString();
 				} if( n == src ){
 					return (co != null) ? new Integer((int) co.lqi).toString() : "None";
+				} else {
+					throw new IllegalArgumentException("Node not part of the edge");
+				}
+			case PRR:
+			case PRR_min:
+				if(n == dst){
+					return fm.format(prr);
+				} if( n == src ){
+					return (co != null) ? fm.format(co.prr) : "None";
 				} else {
 					throw new IllegalArgumentException("Node not part of the edge");
 				}
@@ -180,13 +201,17 @@ class Edge {
 		String rv = null;
 		switch (el) {
 			case RSSI:
-			case RSSI_max:
+			case RSSI_min:
 				rv = new Integer((int) rssi).toString() + " / ";
 				rv += (co != null) ? new Integer((int) co.rssi).toString() : "None";
 			case LQI:
-			case LQI_max:
+			case LQI_min:
 				rv = new Integer((int) lqi).toString() + " / ";
 				rv += (co != null) ? new Integer((int) co.lqi).toString() : "None";
+			case PRR:
+			case PRR_min:
+				rv = fm.format(prr) + " / ";
+				rv += (co != null) ? fm.format(co.prr): "None";				
 				
 		}
 		
@@ -201,6 +226,10 @@ class Edge {
 	public void setLQI(double lqi) {
 		this.lqi = lqi;
 	}
+	
+	public void setPRR(double prr) {
+		this.prr = prr;
+	}	
 	
 	public Pair<Integer, Integer> getPair(){
 		return new Pair<Integer, Integer>(src.id, dst.id);
@@ -240,7 +269,7 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 	private static Logger	logger	= Logger.getLogger(SpringLayout.class);
 	
 	enum Elength {
-		RSSI, RSSI_max, LQI, LQI_max
+		RSSI, RSSI_min, LQI, LQI_min, PRR, PRR_min
 	}
 	
 	private static final long	serialVersionUID	= 1L;
@@ -349,7 +378,7 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 		return new Pair<Integer, Integer>(new Integer(a), new Integer(b));
 	}
 	
-	public void setEdge(Integer src, Integer dst, double rssi, double lqi) {
+	public void setEdge(Integer src, Integer dst, double rssi, double lqi, double prr) {
 		
 		Node snode, dnode;
 		
@@ -384,7 +413,9 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 		
 		e.rssi = rssi;
 		e.lqi = lqi;
+		e.prr = prr;
 		e.set = true;
+		
 		
 	}
 	
@@ -532,7 +563,7 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 	final Color	edgeColor	= Color.black;
 	final Color	nodeColor	= Color.white;
 	final Color	arcColor1	= Color.black;
-	final Color	arcColor2	= Color.green;
+	final Color	arcColor2	= Color.blue;
 	final Color	arcColor3	= Color.red;
 	
 	public void paintNode(Graphics g, Node n, FontMetrics fm) {
@@ -726,9 +757,11 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 	JButton						shake				= new JButton("Shake");
 	ComboBoxItem[]				comboBoxItems		= { 
 			new ComboBoxItem("RSSI", GraphPanel.Elength.RSSI),
-			new ComboBoxItem("RSSI (Max)", GraphPanel.Elength.RSSI_max), 
+			new ComboBoxItem("RSSI (Min)", GraphPanel.Elength.RSSI_min), 
 			new ComboBoxItem("LQI", GraphPanel.Elength.LQI),
-			new ComboBoxItem("LQI (Max)", GraphPanel.Elength.LQI_max) };
+			new ComboBoxItem("LQI (Min)", GraphPanel.Elength.LQI_min),
+			new ComboBoxItem("PRR", GraphPanel.Elength.PRR),
+			new ComboBoxItem("PRR (Min)", GraphPanel.Elength.PRR_min) };
 	
 	JComboBox					layout				= new JComboBox(comboBoxItems);
 	
@@ -890,8 +923,9 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 			int dst = e.superDest.radio.getMote().getID();
 			double rssi = ((DGRMDestinationRadio) e.superDest).signal;
 			double lqi = ((DGRMDestinationRadio) e.superDest).lqi;
+			double prr = ((DGRMDestinationRadio) e.superDest).ratio;
 			
-			panel.setEdge(src, dst, rssi, lqi);
+			panel.setEdge(src, dst, rssi, lqi, prr);
 			
 		}
 		panel.removeUnsetEdges();
