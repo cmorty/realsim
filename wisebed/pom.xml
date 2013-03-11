@@ -55,6 +55,9 @@
                     </execution>
                 </executions>
 				<configuration>
+			<args>
+			  <arg>-feature</arg>
+			</args>
 					  <launchers>
 						<launcher>
 						  <id>foo</id>
@@ -78,7 +81,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>de.fau.dryrun.wisebed.ExperimentClient</mainClass>
+                            <mainClass>de.fau.realsim.wisebed.RealsimClient</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -95,7 +98,43 @@
                     </execution>
                 </executions>
             </plugin>
+             <plugin>
+        		<groupId>org.codehaus.mojo</groupId>
+        		<artifactId>exec-maven-plugin</artifactId>
+        		<version>1.2.1</version>
+        		<executions>
+          			<execution> 
+          				<phase>compile</phase>           
+            			<goals><goal>exec</goal></goals>
+            			<configuration>
+          					<executable>make</executable>
+          	    			<workingDirectory>../sky</workingDirectory>
+          					<arguments>
+            					<argument>statprinter.ihex</argument>
+            
+          					</arguments>
+        				</configuration>
+            			
+          			</execution>
+        		</executions>
+        		
+      	</plugin>
+            
+            
 		</plugins>
+		
+
+			<resources>
+     			<resource>
+       				<directory>../sky</directory>
+       				<includes>
+          				<include>statprinter.ihex</include>
+			        </includes>
+     			</resource>
+   			</resources>
+   
+ 	
+		
 
 	</build>
     <pluginRepositories>
