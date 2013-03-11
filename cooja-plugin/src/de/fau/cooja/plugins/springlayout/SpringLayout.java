@@ -127,28 +127,54 @@ class Edge {
 	double			rssi;
 	double			lqi;
 	boolean			set			= true;
-	static double	rssi_max	= -300;
-	static double	lqi_max		= 300;
+	static double	rssi_min	= -20;
+	static double	lqi_min		= 20;
 	
 	public double len(GraphPanel.Elength el) {
-		double orssi = rssi_max;
-		double olqi = lqi_max;
+		double orssi = rssi_min;
+		double olqi = lqi_min;
 		if(co != null){
 			orssi = co.rssi;
 			olqi = co.lqi;
 		}
 		switch (el) {
 			case RSSI:
-				return -(rssi + orssi) / 2;
+				return (100*100)/(-(rssi + orssi) / 2);
 			case RSSI_max:
-				return -Math.min(rssi, orssi);
+				return (100*100)/(-Math.max(rssi, orssi));
 			case LQI:
-				return (lqi + olqi) / 2;
+				return (100*100)/((lqi + olqi) / 2);
 			case LQI_max:
-				return Math.max(lqi, olqi);
+				return (100*100)/(Math.min(lqi, olqi));
 		}
 		throw new IllegalArgumentException();
 	}
+	
+	public String text(GraphPanel.Elength el, Node n) {
+		switch (el) {
+			case RSSI:
+			case RSSI_max:
+				if(n == dst){
+					return new Integer((int) rssi).toString();
+				} if( n == src ){
+					return (co != null) ? new Integer((int) co.rssi).toString() : "None";
+				} else {
+					throw new IllegalArgumentException("Node not part of the edge");
+				}
+			case LQI:
+			case LQI_max:
+				if(n == dst){
+					return new Integer((int) lqi).toString();
+				} if( n == src ){
+					return (co != null) ? new Integer((int) co.lqi).toString() : "None";
+				} else {
+					throw new IllegalArgumentException("Node not part of the edge");
+				}
+		}
+		
+		throw new IllegalArgumentException();
+	}
+	
 	
 	public String text(GraphPanel.Elength el) {
 		String rv = null;
@@ -549,17 +575,23 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 		offgraphics.fillRect(0, 0, d.width, d.height);
 		
 		for (Edge e : edges.values()) {
-			int x1 = (int) e.src.x;
-			int y1 = (int) e.src.y;
-			int x2 = (int) e.dst.x;
-			int y2 = (int) e.dst.y;
-			if(e.co != null && x1 > x2 || (x1== x2 && y1 > y2)) continue;
+			int xs = (int) e.src.x;
+			int ys = (int) e.src.y;
+			int xd = (int) e.dst.x;
+			int yd = (int) e.dst.y;
+			if(e.co != null && xs > xd || (xs== xd && ys > yd)) continue;
 			
 			
-			int len = (int) Math.abs(Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2)) - e.len(view) * scale / 10);
+			int len = (int) Math.abs(Math.sqrt((xs - xd) * (xs - xd) + (ys - yd) * (ys - yd)) - e.len(view) * scale / 10);
 			offgraphics.setColor((len < 10) ? arcColor1 : (len < 20 ? arcColor2 : arcColor3));
-			offgraphics.drawLine(x1, y1, x2, y2);
-			offgraphics.drawString(String.valueOf(e.text(view)), x1 + (x2 - x1) / 2, y1 + (y2 - y1) / 2);
+			offgraphics.drawLine(xs, ys, xd, yd);
+			//offgraphics.drawString(String.valueOf(e.text(view)), x1 + (x2 - x1) / 2, y1 + (y2 - y1) / 2);
+			
+			offgraphics.drawString(String.valueOf(e.text(view, e.src)), xs + (xd - xs) / 4, ys + (yd - ys) / 4);
+			offgraphics.drawString(String.valueOf(e.text(view, e.dst)), xs + (xd - xs) * 3 / 4, ys + (yd - ys) * 3 / 4 );
+			
+			
+
 			offgraphics.setColor(edgeColor);
 		}
 		
