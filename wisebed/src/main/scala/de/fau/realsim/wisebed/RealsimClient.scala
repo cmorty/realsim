@@ -55,21 +55,38 @@ object RealsimClient {
 		val settings = XML.load(setfile)
 
 		val exp_motes = (settings \ "mote").map(_.text.trim)
-		log.info("T: " + (settings \ "time").text.trim)
+		log.info("Time String: " + (settings \ "time").text.trim)
 		val exp_time = new FormulaParser().evaluate((settings \ "time").text.trim).toInt
+		
+		{
+			 var tm = exp_time;
+			 var str = ""
+			 str = ":%02d".format(tm % 60) + str;
+			 tm /=60;
+			 str = "d %02d".format(tm % 24) + str;
+			 tm /= 24;
+			 str = tm.toString + str;
+			 
+			 log.info("TimeCalculated: " + str)
+		}
+		
+		
 		val exp_firmware = (settings \ "firmware").text.trim
 		val outputs = (settings \ "output")
 		val rsout = (settings \ "realsim")
 		val rsClient = (settings \ "rsClient")
 		
-
+		
+		
+		
+		
 		// Generate message inputs to make sure everything is ok
 		val msgInpts = {
 			// Add normal loggers
 			val rv = Buffer[MessageInput]() 
 			val df  = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
 			for(outp <- outputs){
-				val dt  = new SimpleDateFormat(outp.text.trim).format(new Date);
+				val dt  = new SimpleDateFormat(outp.text.trim).format(new Date)
 				val out = new java.io.PrintWriter(dt)
 			
 				val logger = new MessageLogger(mi => {
@@ -85,7 +102,7 @@ object RealsimClient {
 			
 			
 			for(rs <- rsout){
-				val fname = (rs \ "file").text.trim
+				val fname = new SimpleDateFormat((rs \ "file").text.trim).format(new Date)
 				val avg:Int = {
 					val fld = (rs \ "time").text.trim
 					if(fld.length > 0 ) new FormulaParser().evaluate(fld).toInt
@@ -133,7 +150,15 @@ object RealsimClient {
 		}
 
 		for (r <- res) {
-			log.info("Got Reservations: \n" + r.dateString() + " for " + r.getNodeURNs.mkString(", "))
+			log.info("Got Reservation: " + r.dateString("yyyy-MM-dd'T'HH:mm:ss") + " for " + r.getNodeURNs.mkString(", "))
+			if(r.now){
+				val to = new GregorianCalendar
+				to.add(Calendar.MINUTE, exp_time - 1)
+				if(to.after(r.to)){
+					log.error("Experimentation slot to short to run experiment")
+					cleanup(3)
+				}
+			}
 		}
 
 		
