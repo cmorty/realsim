@@ -29,6 +29,8 @@ object Log2RealSim {
 	
 	def idToString(id:Int) = ("%d.%d").format( id%0x100, id / 0x100 )
 	
+
+	
 	def parseLine(l:String) {
 		val el = l.split(" ")
 		var dst = 0 
@@ -144,10 +146,11 @@ object Log2RealSim {
 			val ds = Tuple2(numb(0), numb(1))
 			last.get(ds) match {
 				case Some(r) => 
-					val dt = d.getTime/1000  - r
+					val dt = d.getTime / 1000  - r
 					if(dt >= 160){
+						val _rsTime = r - startDate.getTime / 1000 + 160
 						nacnt += 1
-						bw.println("%d;rmedge;%s;%s".format(r + 160, idToString(src), idToString(dst)))
+						bw.println("%d;rmedge;%s;%s".format(_rsTime, idToString(src), idToString(dst)))
 						cout +=1;
 					} 	
 				case None =>
