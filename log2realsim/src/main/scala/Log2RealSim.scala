@@ -118,7 +118,7 @@ object Log2RealSim {
 		
 		if(src == 0 ||dst == 0) return		
 		if(startDate == null) startDate = d;
-		val rsTime = (d.getTime - startDate.getTime) / 1000; 
+		val rsTime = d.getTime - startDate.getTime; 
 		
 		//Check for dups by broken liner
 		dup.get(numb(0)) match{
@@ -146,9 +146,9 @@ object Log2RealSim {
 			val ds = Tuple2(numb(0), numb(1))
 			last.get(ds) match {
 				case Some(r) => 
-					val dt = d.getTime / 1000  - r
+					val dt = d.getTime   - r
 					if(dt >= 160){
-						val _rsTime = r - startDate.getTime / 1000 + 160
+						val _rsTime = r - startDate.getTime + 160 * 1000
 						nacnt += 1
 						bw.println("%d;rmedge;%s;%s".format(_rsTime, idToString(src), idToString(dst)))
 						cout +=1;
@@ -156,9 +156,9 @@ object Log2RealSim {
 				case None =>
 			}
 			
-			bw.println("%d;setedge;%s;%s;%f;%d;%d".format(rsTime, idToString(src), idToString(dst), rcv.toFloat/(rcv + loss), rssi, lqi))
+			bw.println("%d;setedge;%s;%s;%f;%d;%d".format(rsTime, idToString(src), idToString(dst), rcv.toFloat/(rcv + loss)  * 100, rssi, lqi))
 			cout += 1
-			last.put(ds, d.getTime / 1000)
+			last.put(ds, d.getTime )
 		} else if(el(1).endsWith("DIS:")){
 			bw.println("%d;rmedge;%s;%s".format(rsTime, idToString(src), idToString(dst)))
 			cout += 1
