@@ -24,7 +24,7 @@ object Log2RealSim {
 	var bw:PrintWriter = null
 	var DStartDate:Date = new Date(0)
 	var DEndDate:Date = new Date(Long.MaxValue)
-	var startDate:Date = null;
+	var startDate:Long = 0;
 	val addnode =  scala.collection.mutable.Set[Int]()
 	
 	def idToString(id:Int) = ("%d.%d").format( id%0x100, id / 0x100 )
@@ -117,8 +117,8 @@ object Log2RealSim {
 		
 		
 		if(src == 0 ||dst == 0) return		
-		if(startDate == null) startDate = d;
-		val rsTime = d.getTime - startDate.getTime; 
+		if(startDate == 0) startDate = d.getTime;
+		val rsTime = d.getTime - startDate; 
 		
 		//Check for dups by broken liner
 		dup.get(numb(0)) match{
@@ -147,8 +147,8 @@ object Log2RealSim {
 			last.get(ds) match {
 				case Some(r) => 
 					val dt = d.getTime   - r
-					if(dt >= 160){
-						val _rsTime = r - startDate.getTime + 160 * 1000
+					if(dt >= 160 * 1000){
+						val _rsTime = r - startDate + 160 * 1000
 						nacnt += 1
 						bw.println("%d;rmedge;%s;%s".format(_rsTime, idToString(src), idToString(dst)))
 						cout +=1;
