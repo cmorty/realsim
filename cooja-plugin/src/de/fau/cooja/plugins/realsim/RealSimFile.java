@@ -1,11 +1,6 @@
 package de.fau.cooja.plugins.realsim;
 
 import java.awt.Color;
-
-import org.apache.log4j.Logger;
-import org.jdom.Attribute;
-import org.jdom.Element;
-
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
@@ -28,6 +23,15 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
+import javax.swing.JTextPane;
+import javax.swing.text.DefaultCaret;
+
+import log4j2JText.JTextPaneAppender;
+
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.jdom.Attribute;
+import org.jdom.Element;
 
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.GUI;
@@ -53,11 +57,14 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 	JButton			load			= new JButton("Import");
 	GUI gui;
 	JCheckBox loadFile			= new JCheckBox("Load from File instead of Simulation");
-	
+	JTextPane logOutput          = new JTextPane();
 	private final static String failmsg = "This Plugin needs a DGRM.";
 	
 	ArrayList<SimEvent>		events = new ArrayList<SimEvent>(); //Make sure there is an empty list.
 	int						pos;
+	
+
+	
 	
 	public RealSimFile(Simulation simulation, GUI gui) {
 		super("RealSim File", gui, false);
@@ -75,7 +82,11 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 			}
 			return;
 		}
+		JTextPaneAppender taa = new JTextPaneAppender(logOutput);
 		
+		logger.addAppender(taa);
+		taa.setThreshold(Level.ALL);
+		System.out.println("TH: " + taa.getThreshold().toString());
 		
 		//Init components
 		default_node = new JComboBox(new MoteTypeComboboxModel(sim));
@@ -84,19 +95,16 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		select_file.addActionListener(this);
 		load.addActionListener(this);
 		loadFile.addActionListener(this);
+		DefaultCaret caret = (DefaultCaret)logOutput.getCaret();
+		caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
 		
 		
-		//LAyout
+		
+		//Layout
 		GroupLayout layout = new GroupLayout(controlPanel);
 		controlPanel.setLayout(layout);
 		layout.setAutoCreateGaps(true);
 		layout.setAutoCreateContainerGaps(true);
-				
-		
-		
-		
-		
-
 		
 		
 		
@@ -114,6 +122,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		            GroupLayout.PREFERRED_SIZE)
 		    .addComponent(loadFile,  GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
 				            GroupLayout.PREFERRED_SIZE)
+			.addComponent(logOutput)
 		);
 		
 		layout.setHorizontalGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
@@ -124,6 +133,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 				)
 				.addComponent(default_node)
 				.addComponent(loadFile)
+				.addComponent(logOutput)
 		);
 		
 		
@@ -198,6 +208,15 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		                
 				return false;
 			}
+			logger.info("Reading " + filename);
+			
+			MoteTypeComboboxModel mtbm = (MoteTypeComboboxModel) default_node.getModel();
+			if(mtbm.getSelectedItem() == null){
+				logger.error("No default node selected.");
+				sc.close();
+				return false;
+			}
+			
 			while ( null != (line = sc.readLine())) {
 				ln++;
 				
@@ -212,10 +231,8 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 					long time = new Long(t[0]);
 					t[1] = t[1].toLowerCase();
 					
-					if (t[1].equals("addnode")) {
-						MoteTypeComboboxModel mtbm = (MoteTypeComboboxModel) default_node.getModel();
-						
-						exind = 2; exreason = "node Id";
+					if (t[1].equals("addnode")) {						
+						exind = 2; exreason = "addnode";
 						SimEvent se = new SimEventAddNode(time, strToId(t[2]), mtbm.getSelectedMote());
 						events.add(se);
 					}
@@ -264,16 +281,26 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		}
 		sortEvents();
 		logger.info("RealSim imported " + events.size() + " events");
+		//When setting up a new simulation everything a 0 is a automtically added.
+		if(sim.getSimulationTime() == 0) {
+			for(SimEvent e : events) {
+				if(e.time != 0) break;
+				e.action();
+			}
+		}
 		//Register event
 		eventShed.remove();
 		sim.scheduleEvent(eventShed,sim.getSimulationTime());
-		logger.info("Registered Event for: " + sim.getSimulationTime() );
+		logger.debug("Registered Event for: " + sim.getSimulationTime() );
 		return true;
 	}
 	
-	protected void sortEvents() {
+	private void sortEvents() {
 		Collections.sort(events, new SimEventComperator());
 	}
+	
+	
+	
 	
 	private TimeEvent eventShed = new TimeEvent(0) {
 	    public void execute(long time) {
@@ -392,7 +419,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		
 		abstract public  Collection<Element> getConfigXML();
 		
-		public long		time;
+		public final long		time;
 		static RealSim	rs;
 		
 		static void setRs(RealSim lrs) {
