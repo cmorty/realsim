@@ -311,7 +311,7 @@ broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from)
 		memcpy(&m, bm, sizeof(m));
 		rimeaddr_copy(&(idatabuf[i].src), from);
 		idatabuf[i].seqno = m.seqno;
-		idatabuf[i].lqi = (int8_t)(packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
+		idatabuf[i].lqi = (packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
 		idatabuf[i].rssi = (int8_t)(packetbuf_attr(PACKETBUF_ATTR_RSSI));
 		ringbuf_put(&inbuf, i);
 

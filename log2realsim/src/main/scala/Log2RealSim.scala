@@ -17,14 +17,16 @@ object Log2RealSim {
 	val dup = HashMap[Int, Array[String]]()
 	
 	val dp=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-	println("----B---")
 	var nacnt = 0
 	var rem = 0
 	var cout = 0;
 	var bw:PrintWriter = null
-	var DStartDate:Date = new Date(0)
-	var DEndDate:Date = new Date(Long.MaxValue)
-	var startDate:Long = 0;
+	//Dates to filter
+	var fStartDate:Date = new Date(0)
+	var fEndDate:Date = new Date(Long.MaxValue)
+	//Date of the collected data
+	var startDate:Long = 0
+	var endDate:Long = 0
 	val addnode =  scala.collection.mutable.Set[Int]()
 	
 	def idToString(id:Int) = ("%d.%d").format( id%0x100, id / 0x100 )
@@ -52,8 +54,8 @@ object Log2RealSim {
 	
 			//Ignore unneeded
 			
-			if(d.before(DStartDate)) return;			
-			if(d.after(DEndDate)) return;
+			if(d.before(fStartDate)) return;			
+			if(d.after(fEndDate)) return;
 			
 			
 			
@@ -117,7 +119,10 @@ object Log2RealSim {
 		
 		
 		if(src == 0 ||dst == 0) return		
-		if(startDate == 0) startDate = d.getTime;
+		
+		if(startDate == 0) startDate = d.getTime
+		
+		endDate = d.getTime
 		val rsTime = d.getTime - startDate; 
 		
 		//Check for dups by broken liner
@@ -177,8 +182,8 @@ object Log2RealSim {
 		val parser = new OptionParser("scopt") {
 		  arg("<infile>", "<infile> input file", { v: String => infile = v })
 		  argOpt("[<outfile>]", "<outfile> output file", { v: String => outfile = v })
-		  opt("start", "When to start parsing in yyyy-MM-ddTHH:mm:ss",  {v: String => DStartDate = dp.parse(v)})
-		  opt("end", "When to stop parsing in yyyy-MM-ddTHH:mm:ss",  {v: String => DEndDate = dp.parse(v)})
+		  opt("start", "When to start parsing in yyyy-MM-ddTHH:mm:ss",  {v: String => fStartDate = dp.parse(v)})
+		  opt("end", "When to stop parsing in yyyy-MM-ddTHH:mm:ss",  {v: String => fEndDate = dp.parse(v)})
 		  
 		  
 		  // arglist("<file>...", "arglist allows variable number of arguments",
@@ -202,12 +207,17 @@ object Log2RealSim {
 			ctr += 1
 			
 		}
+		
+		bw.close
+		
 		println("Input:        " + ctr)
 		println("Output:       " + cout)
 		println("Removed dups: " + rem)
+		println("Start:        " + dp.format(new Date(startDate)) )
+		println("End:          " + dp.format(new Date(endDate)) )
 		println
 		
-		bw.close()
+		
 
 
 		
