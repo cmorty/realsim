@@ -7,16 +7,20 @@
 #include "lib/random.h"
 #include "stdio.h"
 #include "ringbuf.h"
+#include "string.h"
 
 #include "generator.h"
 #include "handlestats.h"
 
 #include "dev/ds2411.h"
+
+#include "dev/cc2420.h"
+
 /**
  * See Datasheet or CC2420.java
  * Might be 55 or 53 or whatever
  */
-#define RSSI_OFFSET (55)
+#define RSSI_OFFSET (-45)
 
 
 
@@ -34,8 +38,8 @@ static uint8_t beacontimerpos = BEACONS_PER_PERIODE;
 //Ringbuf
 struct idata{
 	rimeaddr_t src;
-	uint8_t lqi;
-	uint8_t rssi;
+	int8_t lqi;
+	int8_t rssi;
 	uint16_t seqno;
 };
 
@@ -127,18 +131,15 @@ static void push_stats(struct neighbor *n){
  * Handles received packets in a protothread to avoid concurrency
  */
 static int handlepackets(void){
-	uint_fast8_t i;
 	struct neighbor *n;
-	int rv = 0;
 	int id = ringbuf_get(&inbuf);
 	if(id != -1){
 
-		rv = 1;
 
 
 		/* check if we already know this neighbor. */
 		for(n = list_head(neighbors_list); n != NULL; n = list_item_next(n)) {
-			if(rimeaddr_cmp(&n->addr, &idatabuf[i].src)) {
+			if(rimeaddr_cmp(&n->addr, &idatabuf[id].src)) {
 				break;
 			}
 		}
@@ -151,14 +152,14 @@ static int handlepackets(void){
 			n = memb_alloc(&neighbors_memb);
 			if(n == NULL) {
 				//Continue to next;
-				bufuse[i] = 0;
+				bufuse[id] = 0;
 				puts("W: Too many neighbours");
 				return 1;
 			}
 			memset(n, 0, sizeof(*n));
 
 			/* Initialize the fields. */
-			rimeaddr_copy(&n->addr, &idatabuf[i].src);
+			rimeaddr_copy(&n->addr, &idatabuf[id].src);
 			n->last_seqno = -1;
 
 			/* Place the neighbor on the neighbor list. */
@@ -166,23 +167,23 @@ static int handlepackets(void){
 		}
 
 		// Test
-		if(n->last_seqno != -1 && n->last_seqno / BEACONS_PER_PERIODE != idatabuf[i].seqno/ BEACONS_PER_PERIODE){
+		if(n->last_seqno != -1 && n->last_seqno / BEACONS_PER_PERIODE != idatabuf[id].seqno/ BEACONS_PER_PERIODE){
 			push_stats(n);
 		}
 
 		/* Set new values - Lowpass*/
-		n->rssi += idatabuf[i].rssi;
-		n->lqi += idatabuf[i].lqi;
+		n->rssi += idatabuf[id].rssi;
+		n->lqi += idatabuf[id].lqi;
 		n->last_seen = clock_seconds();
 
 		/* Logic */
-		if(n->last_seqno == idatabuf[i].seqno){
+		if(n->last_seqno == idatabuf[id].seqno){
 			n->dup_count++;
 		}
 
-		n->last_seqno = idatabuf[i].seqno;
+		n->last_seqno = idatabuf[id].seqno;
 		n->recv_count++;
-		bufuse[i] = 0;
+		bufuse[id] = 0;
 		return 1;
 	}
 
@@ -220,6 +221,10 @@ PROCESS_THREAD(beacon_process, ev, data){
 
 	PROCESS_BEGIN();
 	/* Init */
+		#ifdef CCA_THRESH
+		  printf("Setting CCA to: %d\n", CCA_THRESH);
+		  cc2420_set_cca_threshold(CCA_THRESH);
+		#endif //CCA_THRESH
 		random_init(*(long *)ds2411_id + *(long * )&rimeaddr_node_addr);
 		ringbuf_init(&inbuf, inbufdata, sizeof(inbufdata));
 		if(!rcv_event) rcv_event = process_alloc_event();
@@ -306,8 +311,8 @@ broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from)
 		memcpy(&m, bm, sizeof(m));
 		rimeaddr_copy(&(idatabuf[i].src), from);
 		idatabuf[i].seqno = m.seqno;
-		idatabuf[i].lqi = (packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
-		idatabuf[i].rssi = (packetbuf_attr(PACKETBUF_ATTR_RSSI) + RSSI_OFFSET);
+		idatabuf[i].lqi = (int8_t)(packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
+		idatabuf[i].rssi = (int8_t)(packetbuf_attr(PACKETBUF_ATTR_RSSI));
 		ringbuf_put(&inbuf, i);
 
 		if(!handling_packets) process_post(&beacon_process, rcv_event ,NULL);

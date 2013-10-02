@@ -17,8 +17,8 @@ struct neighbor {
 	uint16_t last_seqno;
 	uint8_t recv_count;
 	uint8_t dup_count;
-	uint16_t rssi;
-	uint16_t lqi;
+	int16_t rssi;
+	int16_t lqi;
 	struct {
 		uint8_t remove:1;
 	};
