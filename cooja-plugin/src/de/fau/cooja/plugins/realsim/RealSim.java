@@ -172,7 +172,7 @@ public class RealSim implements Observer  {
 		}
 		
 		dr.ratio = rse.ratio;
-		dr.signal = (rse.rssi) - 100;
+		dr.signal = (rse.rssi);
 		dr.lqi = rse.lqi;
 		
 		if(edge == null){
