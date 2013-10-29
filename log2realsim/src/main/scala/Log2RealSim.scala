@@ -20,7 +20,10 @@ object Log2RealSim {
 	var nacnt = 0
 	var rem = 0
 	var cout = 0;
-	var bw:PrintWriter = null
+	//Output for realsim
+	var rsOut:PrintWriter = null
+	//Output for r
+	var rOut:PrintWriter = null
 	//Dates to filter
 	var fStartDate:Date = new Date(0)
 	var fEndDate:Date = new Date(Long.MaxValue)
@@ -45,11 +48,59 @@ object Log2RealSim {
 		var d:Date = null
 		
 		
+					/*
+			printf("R: %x %x %x %x %x %x %x\n",
+				*(uint16_t*)&(rimeaddr_node_addr),
+				*(uint16_t*)&(n->addr),
+				n->rssi /  n->recv_count,
+				n->lqi /  n->recv_count,
+				n->recv_count,
+				BEACONS_PER_PERIODE  -  n->recv_count,
+				n->dup_count);*/
+		
+		/*	printf("RE2: %i %i %i %i %i %i %i %i\n",
+				*(uint16_t*)&(rimeaddr_node_addr),
+				*(uint16_t*)&(n->addr),
+				n->last_seqno / BEACONS_PER_PERIODE,
+				n->rssi /  n->recv_count,
+				n->lqi /  n->recv_count,
+				n->recv_count,
+				BEACONS_PER_PERIODE  -  n->recv_count,
+				n->dup_count);*/
+		
+		/*	printf("RE: %x %x %x %x %x %x %x %x\n",
+				*(uint16_t*)&(rimeaddr_node_addr),
+				*(uint16_t*)&(n->addr),
+				n->last_seqno / BEACONS_PER_PERIODE,
+				n->rssi /  n->recv_count,
+				n->lqi /  n->recv_count,
+				n->recv_count,
+				BEACONS_PER_PERIODE  -  n->recv_count,
+				n->dup_count);*/
+		
 		if(el.length < 2 ) return
 		
 		
-		if(Array("R:", "RE:", "DIS:").exists(el(1).endsWith(_))){
+		def isT(suf:String*):Boolean = {
+			suf.exists(el(1).endsWith(_))
+		}
+		
+		if(isT("R:", "RE:", "DIS:")){
+			d = dp.parse(el(0));
+	
+			//Ignore unneeded
 			
+			if(d.before(fStartDate)) return;			
+			if(d.after(fEndDate)) return;
+			
+			numb = try{
+				 el.tail.tail.map(java.lang.Integer.parseInt(_, 16))
+			} catch {
+				case e:Throwable => 
+					println("Failed to pase " + l )
+					return
+			}
+		} else if(isT("RE2:", "DIS2:")){
 			d = dp.parse(el(0));
 	
 			//Ignore unneeded
@@ -58,9 +109,8 @@ object Log2RealSim {
 			if(d.after(fEndDate)) return;
 			
 			
-			
 			numb = try{
-				 el.tail.tail.map(java.lang.Integer.parseInt(_, 16))
+				 el.tail.tail.map(java.lang.Integer.parseInt(_))
 			} catch {
 				case e:Throwable => 
 					println("Failed to pase " + l )
@@ -70,56 +120,40 @@ object Log2RealSim {
 		
 		
 		
-		
-		
-		if(el(1).endsWith("R:")){
-			/*
-			printf("R: %x %x %x %x %x %x %x\n",
-				*(uint16_t*)&(rimeaddr_node_addr),
-				*(uint16_t*)&(n->addr),
-				n->rssi /  n->recv_count,
-				n->lqi /  n->recv_count,
-				n->recv_count,
-				BEACONS_PER_PERIODE  -  n->recv_count,
-				n->dup_count);*/
-				
-			
+		if(isT("R:")){			
 			if(el.length < 7) return
-			
 			dst = numb(0)
 			src = numb(1)
 			rssi = numb(2);
 			lqi = numb(3);
 			rcv = numb(4);
 			loss = numb(5);
-		} else if(el(1).endsWith("RE:")){
-			/*	printf("RE: %x %x %x %x %x %x %x %x\n",
-				*(uint16_t*)&(rimeaddr_node_addr),
-				*(uint16_t*)&(n->addr),
-				n->last_seqno / BEACONS_PER_PERIODE,
-				n->rssi /  n->recv_count,
-				n->lqi /  n->recv_count,
-				n->recv_count,
-				BEACONS_PER_PERIODE  -  n->recv_count,
-				n->dup_count);*/
-				if(el.length < 8) return
-			
+		} else if(isT("RE:", "RE2:")){
+			if(el.length < 8) return
 			dst = numb(0)
 			src = numb(1)
-			rssi = numb(3)
+			if(isT("RE:")) {
+				//Substract 55
+				var v = numb(3) - 55
+				//Fix underrun
+				if(v < 0) v += 255
+				//Fix lost sign
+				if(v > 128) v -= 255
+				//Offset
+				rssi = v - 45
+			} else {
+				rssi = numb(3) - 45
+			}
 			lqi = numb(4);
 			rcv = numb(5);
 			loss = numb(6);	
 			
-		} else if(el(1).endsWith("DIS:")){			
+		}  else if(isT("DIS:", "DIS2:")){			
 			dst = numb(0)
 			src = numb(1)
 		} else return
 		
-		
-		
 		if(src == 0 ||dst == 0) return		
-		
 		if(startDate == 0) startDate = d.getTime
 		
 		endDate = d.getTime
@@ -139,14 +173,11 @@ object Log2RealSim {
 		
 
 		//Add Nodes
-		if(addnode.add(src)){ bw.println("0;addnode;" + idToString(src)) ; cout+=1} 
-		if(addnode.add(dst)){ bw.println("0;addnode;" + idToString(dst)); cout +=1}
+		if(addnode.add(src)){ rsOut.println("0;addnode;" + idToString(src)) ; cout+=1} 
+		if(addnode.add(dst)){ rsOut.println("0;addnode;" + idToString(dst)); cout +=1}
 		
-		
-
-		if(Array("R:", "RE:").exists(el(1).endsWith(_))){
-		
-
+		//output
+		if(List("R:", "RE:", "RE2:").exists(el(1).endsWith(_))){
 			//Check for connection loss
 			val ds = Tuple2(numb(0), numb(1))
 			last.get(ds) match {
@@ -155,17 +186,19 @@ object Log2RealSim {
 					if(dt >= 160 * 1000){
 						val _rsTime = r - startDate + 160 * 1000
 						nacnt += 1
-						bw.println("%d;rmedge;%s;%s".format(_rsTime, idToString(src), idToString(dst)))
+						//rOut.println(List(dp.format(new Date(dt + 160 * 1000)), dst, src, "NA","NA","NA","NA").mkString(" "))
+						rsOut.println("%d;rmedge;%s;%s".format(_rsTime, idToString(src), idToString(dst)))
 						cout +=1;
 					} 	
 				case None =>
 			}
-			
-			bw.println("%d;setedge;%s;%s;%f;%d;%d".format(rsTime, idToString(src), idToString(dst), rcv.toFloat/(rcv + loss)  * 100, rssi, lqi))
+			rOut.println(List(dp.format(d), dst, src, rssi, lqi, rcv, loss).mkString(" "))
+			rsOut.println("%d;setedge;%s;%s;%f;%d;%d".format(rsTime, idToString(src), idToString(dst), rcv.toFloat/(rcv + loss)  * 100, rssi, lqi))
 			cout += 1
 			last.put(ds, d.getTime )
-		} else if(el(1).endsWith("DIS:")){
-			bw.println("%d;rmedge;%s;%s".format(rsTime, idToString(src), idToString(dst)))
+		} else if(List("DIS:", "DIS2:").exists(el(1).endsWith(_))){
+			rOut.println(List(dp.format(d), dst, src, "NA","NA","NA","NA").mkString(" "))
+			rsOut.println("%d;rmedge;%s;%s".format(rsTime, idToString(src), idToString(dst)))
 			cout += 1
 		}
 		
@@ -181,7 +214,7 @@ object Log2RealSim {
 		
 		val parser = new OptionParser("scopt") {
 		  arg("<infile>", "<infile> input file", { v: String => infile = v })
-		  argOpt("[<outfile>]", "<outfile> output file", { v: String => outfile = v })
+		  argOpt("[<outfile>]", "<outfile> output file (.rs and .r will be attached ) ", { v: String => outfile = v })
 		  opt("start", "When to start parsing in yyyy-MM-ddTHH:mm:ss",  {v: String => fStartDate = dp.parse(v)})
 		  opt("end", "When to stop parsing in yyyy-MM-ddTHH:mm:ss",  {v: String => fEndDate = dp.parse(v)})
 		  
@@ -192,11 +225,12 @@ object Log2RealSim {
 		
 		if(!parser.parse(args)) sys.exit(1)
 		
-		if(outfile == "") outfile = infile + ".rs"
+		if(outfile == "") outfile = infile 
 		
 		
 		val br = new BufferedReader(new FileReader(infile))
-		bw = new PrintWriter(new FileWriter(outfile))
+		rsOut = new PrintWriter(new FileWriter(outfile + ".rs"))
+		rOut = new PrintWriter(new FileWriter(outfile + ".r"))
 		
 		
 		val lIt = Iterator.continually(br.readLine()).takeWhile(_ != null)
@@ -208,7 +242,8 @@ object Log2RealSim {
 			
 		}
 		
-		bw.close
+		rsOut.close
+		rOut.close
 		
 		println("Input:        " + ctr)
 		println("Output:       " + cout)
