@@ -84,7 +84,7 @@ class RealSimFile(file:String, avgsize:Int) extends MessageInput {
 					val rat = md.rcv.sum.toFloat / (md.rcv.sum + md.loss.sum)
 					log.debug(idToString(src) + " -> " + idToString(dst)  + ": " + md.rcv.sum.toString + " ; " + md.loss.sum + "->"  + "%f".format(rat))
 					out.println("%d;setedge;%s;%s;%f;%d;%d".format(dt, idToString(src), idToString(dst), rat, md.rssi.avg.toInt, md.lqi.avg.toInt))
-					out.flush
+					
 				}
 		
 			}		

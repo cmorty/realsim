@@ -63,6 +63,22 @@ class RealSimLiveConn(host:String = "localhost", port:Int = 1337, timeout:Int = 
 					}
 					
 				}
+				if(msg(0) == "RE:"){					 
+					try{
+						 val dat = 0 :: msg.tail.map(java.lang.Integer.parseInt(_, 16)).toList
+						 val h = 100f
+						 
+						 val ratio = "%x".format( (h * dat(6) / (dat(7) + dat(7))).toInt)
+						 //log.info(msg.mkString("--" ,  "-", "--") +   dat(6) + " " + dat(7) + " = " + ratio)
+						 var oele = Array[String]("%x".format(timeout), msg(2), msg(1), ratio ,msg(4), msg(5))
+						 log.info("Sending: " +  oele.mkString(" "))
+						 out.println(oele.mkString(" "))
+					} catch {
+						case e:Exception => log.error("Error parsing string: ", e)
+					}
+					
+				}
+				
 			} 			
 		}
 	}

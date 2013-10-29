@@ -7,7 +7,6 @@ import scala.xml.XML
 import org.apache.log4j.Level
 import de.fau.wisebed.Reservation.reservation2CRD
 import de.fau.wisebed.messages.MessageWaiter
-import de.uniluebeck.itm.tr.util.Logging
 import eu.wisebed.api.common._
 import de.fau.wisebed.jobs.MoteAliveState._
 import de.fau.wisebed.messages.MessageLogger
@@ -26,6 +25,7 @@ import de.fau.wisebed.messages.MessageInput
 
 
 
+
 object RealsimClient {
 	val log = LoggerFactory.getLogger(this.getClass)
 
@@ -33,7 +33,17 @@ object RealsimClient {
 	val time = 30 * 60
 
 	def main(args: Array[String]) {
-		Logging.setLoggingDefaults(Level.INFO) // new PatternLayout("%-11d{HH:mm:ss,SSS} %-5p - %m%n"))
+		
+		val handler = new ExHandler();
+	    Thread.setDefaultUncaughtExceptionHandler(handler);
+	    ;{
+	    	import org.apache.log4j._
+	    	val DEFAULT_PATTERN_LAYOUT = "%-23d{yyyy-MM-dd HH:mm:ss,SSS} | %-30.30t | %-30.30c{1} | %-5p | %m%n"
+	    	val oc = new ConsoleAppender(new PatternLayout(DEFAULT_PATTERN_LAYOUT))
+	    	Logger.getRootLogger.setLevel(org.apache.log4j.Level.DEBUG)
+			Logger.getRootLogger.addAppender(oc)
+	    }
+			
 
 		//Get Config
 
@@ -76,6 +86,7 @@ object RealsimClient {
 		val rsout = (settings \ "realsim")
 		val rsClient = (settings \ "rsClient")
 		
+		val contError = (settings \ "onError").text.trim.toLowerCase.equals("continue")
 		
 		
 		
@@ -88,11 +99,16 @@ object RealsimClient {
 			for(outp <- outputs){
 				val dt  = new SimpleDateFormat(outp.text.trim).format(new Date)
 				val out = new java.io.PrintWriter(dt)
-			
+				var flush = (new Date).getTime
 				val logger = new MessageLogger(mi => {
 					import wrappers.WrappedMessage._					
 					out.println(df.format(new Date)+ " " + mi.node + ":" + mi.dataString)
-					//out.flush
+					val now = (new Date).getTime
+					if(now - flush > 1000){
+						flush = now
+						out.flush
+					} 
+					//
 					
 				}) with MsgLiner
 				
@@ -146,6 +162,7 @@ object RealsimClient {
 			log.info("Removing Reservation")
 			res.foreach(tb.freeReservation(_))
 			log.info("Exit with rv: " + rv)
+			Thread.setDefaultUncaughtExceptionHandler(null)
 			sys.exit(rv)
 		}
 
@@ -175,7 +192,7 @@ object RealsimClient {
 		}
 
 		val exp = new Experiment(res.toList, tb)
-
+/*
 		
 		Runtime.getRuntime.addShutdownHook(new Thread {
 			override def run  {
@@ -188,7 +205,7 @@ object RealsimClient {
 		})
 		
 		
-
+*/
 
 		log.info("Requesting Motestate")
 		val statusj = exp.areNodesAlive(usemotes)
@@ -237,7 +254,7 @@ object RealsimClient {
 		
 		//Go, flash go.
 		var motes = usemotes
-if(true){
+
 		for (t <- 1 to 5) if (motes.size > 0) {
 			log.info("Flashing  - try " + t)
 			val flashj = {
@@ -251,13 +268,20 @@ if(true){
 				Thread.sleep(10000) //Sleep one sec - just in case
 			}
 		}
+		log.info("Done flashing")
+		
 		//Are there still motes to flash?
 		if (motes.size > 0) {
-			cleanup(1)
+			if(contError) {
+				log.warn("Continueing despite error")
+			} else {
+				cleanup(1)
+			}
 		}
-}
+
 		
 		//Add general Logger
+		log.info("Adding generic Logger")
 		
 		{
 			var ctr = 0
@@ -271,18 +295,40 @@ if(true){
 		}
 		
 		//Add other message inputs
+		log.info("Adding additional Inputs")
 		msgInpts.foreach(exp.addMessageInput(_))
 		
 		
+		log.info("Setting Timer")
 		val endt = new GregorianCalendar
 		endt.add(Calendar.MINUTE, exp_time)
-		while(exp.active && endt.before(new GregorianCalendar)){
-			Thread.sleep(1000);			
+		while(exp.active && endt.after(new GregorianCalendar)){
+//			log.info(endt.toString() + " -> " + (new GregorianCalendar).toString )
+			Thread.sleep(1000)
 		}
-
-		
+		log.info("Done");
+		val st = Thread.getAllStackTraces
+           
+        for(t <- st){
+            if(t._1.isDaemon()){
+                println("Deamon: " + t._1.toString)
+            } else {
+                println("Thread: " +  t._1.toString)
+                t._2.foreach(println(_))
+            }
+        }
+		cleanup(0)
 	}
 
-
-
 }
+
+
+class ExHandler extends Thread.UncaughtExceptionHandler {
+  def uncaughtException( t:Thread,  e:Throwable) {
+  	System.err.println("Throwable: " + e.getMessage());
+    System.err.println(t.toString());
+    System.err.println("Terminating");
+    sys.exit(55)
+  }
+}
+
