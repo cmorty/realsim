@@ -20,7 +20,7 @@ struct neighbor_sink {
 	uint8_t recv_count;
 	uint8_t loose_count;
 	uint8_t dup_count;
-	uint8_t rssi;
+	int8_t rssi;
 	uint8_t lqi;
 };
 

@@ -8,7 +8,7 @@
 #include "statpacker.h"
 
 #define CPY(dst, src) {memcpy(&(dst), &(src), sizeof(dst));}
-#define CPYV(dst, src) {typeof(dst) t ; memcpy(&(dst), (t = src, &t), sizeof(dst));}
+#define CPYV(dst, src) {typeof(dst) t ; t = src; memcpy(&(dst), &t, sizeof(dst));}
 
 
 MEMB(sendbuf_memb, stat_datapack, MAX_PACKETS);
@@ -19,6 +19,8 @@ static uint16_t free_arr[10];
 struct scan_stats scan_stats = {0,0};
 
 static uint16_t seqno;
+
+
 
 void stat_print(struct sink_msg * sm){
 	//MSP430 Make data is aligned
@@ -33,7 +35,7 @@ void stat_print(struct sink_msg * sm){
 	pos = (void *)sm;
 	end = pos + sm->size;
 
-	printf("DAT: %lx %x %x %lx %x\n",clock_seconds(),  *(uint16_t*)&(sm->own_addr), sm->seqno, sm->time, sm->interval);
+	printf("DAT: %i %i %i %li %i\n",clock_seconds(),  *(uint16_t*)&(sm->own_addr), sm->seqno, sm->time, sm->interval);
 	pos = sm->d;
 
 	while(1){
@@ -42,15 +44,16 @@ void stat_print(struct sink_msg * sm){
 		if(rimeaddr_cmp(&(sm->own_addr), rad)){
 			//Energy
 			struct energystats * es = (void *) pos;
-			printf("E: %x %lx %lx %lx %lx %lx\n", *(uint16_t*)&(sm->own_addr),  es->time, es->cpu, es->lpm, es->listen, es->transmit);
+			printf("E: %i %li %li %li %li %li\n", *(uint16_t*)&(sm->own_addr),  es->time, es->cpu, es->lpm, es->listen, es->transmit);
 			pos = (void *)(es + 1);
 
 		} else {
 			struct neighbor_sink * ns = (void * )pos;
 			pos = (void *)(ns + 1);
-			printf("R: %x %x %x %x %x %x\n", *(uint16_t*)&(ns->addr), ns->rssi, ns->lqi, ns->recv_count, ns->loose_count, ns->dup_count);
+			printf("R: %i %i %i %i %i %i\n", *(uint16_t*)&(ns->addr), ns->rssi, ns->lqi, ns->recv_count, ns->loose_count, ns->dup_count);
 		}
 	}
+	puts("===");
 }
 
 struct sink_msg * stat_getnext(void){
@@ -132,9 +135,6 @@ static void * reserve(uint16_t size){
 void pack_energystats(void){
 	struct energystats * es = reserve(sizeof(struct energystats));
 	if(es == NULL) return;
-
-
-
 	rimeaddr_copy(&(es->addr), &rimeaddr_node_addr);
 	CPYV(es->cpu, energest_type_time(ENERGEST_TYPE_CPU));
 	CPYV(es->lpm, energest_type_time(ENERGEST_TYPE_LPM));
@@ -153,20 +153,17 @@ void handlestats(struct neighbor *n)
 
 	CPY(ns->addr, n->addr);
 	CPY(ns->dup_count, n->dup_count);
-	n->dup_count = 0;
 
 	CPY(ns->recv_count, n->recv_count);
-	n->recv_count = 0;
 
 	CPYV(ns->loose_count,  BEACONS_PER_PERIODE  -  n->recv_count);
 
 	CPYV(ns->lqi, n->lqi /  n->recv_count);
-	n->lqi = 0;
 
 	CPYV(ns->rssi,  n->rssi /  n->recv_count);
-	n->rssi = 0;
 	printf("Pushing stats for %d.%d\n",n->addr.u8[0],n->addr.u8[1]);
-	printf("RDE: %x %x %x %x %x %x\n", *(uint16_t*)&(ns->addr), ns->rssi, ns->lqi, ns->recv_count, ns->loose_count, ns->dup_count);
+	printf("RDE: %i %i %i %i %i %i\n", *(uint16_t*)&(ns->addr), ns->rssi, ns->lqi, ns->recv_count, ns->loose_count, ns->dup_count);
+	//printf("RSSI: %i, %i, %i\n", ns->rssi,  n->rssi ,  n->recv_count);
 
 }
 

@@ -176,6 +176,8 @@ static int handlepackets(void){
 		n->lqi += idatabuf[id].lqi;
 		n->last_seen = clock_seconds();
 
+		//printf("RSSIL: %x  %i %i \n", *(uint16_t*)&(n->addr.u8),  n->rssi,  idatabuf[id].rssi);
+
 		/* Logic */
 		if(n->last_seqno == idatabuf[id].seqno){
 			n->dup_count++;

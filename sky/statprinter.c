@@ -24,7 +24,7 @@ void handlestats(struct neighbor *n)
 			BEACONS_PER_PERIODE  -  n->recv_count,
 			n->dup_count);*/
 	/*
-	printf("RE2: %x %x %x %x %x %x %x %x\n",
+	printf("RE: %x %x %x %x %x %x %x %x\n",
 					*(uint16_t*)&(rimeaddr_node_addr),
 					*(uint16_t*)&(n->addr),
 					n->last_seqno / BEACONS_PER_PERIODE,
