@@ -150,12 +150,12 @@ public class RealSimLive extends VisPlugin implements ActionListener {
 						int timeout = 0, src = 0, dst = 0 ,prr = 0, rssi = 0, lqi = 0;
 						Boolean ok = true;
 						try {								
-							 timeout = Integer.parseInt(el[0], 16);
-							 src = Integer.parseInt(el[1], 16);	
-							 dst = Integer.parseInt(el[2], 16);
-							 prr = Integer.parseInt(el[3], 16);
-							 rssi = Integer.parseInt(el[4], 16);
-							 lqi = Integer.parseInt(el[5], 16);
+							 timeout = Integer.parseInt(el[0]); //In sec
+							 src = Integer.parseInt(el[1]);	
+							 dst = Integer.parseInt(el[2]);
+							 prr = Integer.parseInt(el[3]);
+							 rssi = Integer.parseInt(el[4]);
+							 lqi = Integer.parseInt(el[5]);
 							
 							 
 						}catch(Exception e){
