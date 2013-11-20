@@ -33,7 +33,7 @@ import java.util.Vector;
 
 import org.jdom.Element;
 
-import se.sics.cooja.radiomediums.AbstractRadioMedium;
+import org.contikios.cooja.radiomediums.AbstractRadioMedium;
 
 // Help class to manage edges
 public class RealSimEdge {

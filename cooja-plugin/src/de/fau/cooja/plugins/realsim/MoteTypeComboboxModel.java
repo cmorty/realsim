@@ -7,8 +7,8 @@ import java.util.Observer;
 import javax.swing.AbstractListModel;
 import javax.swing.ComboBoxModel;
 
-import se.sics.cooja.MoteType;
-import se.sics.cooja.Simulation;
+import org.contikios.cooja.MoteType;
+import org.contikios.cooja.Simulation;
 
 public class MoteTypeComboboxModel extends AbstractListModel implements Observer, ComboBoxModel {
 	private Simulation				sim;

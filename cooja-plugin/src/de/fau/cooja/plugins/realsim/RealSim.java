@@ -8,26 +8,26 @@ import java.util.Observer;
 
 import org.apache.log4j.Logger;
 
-import se.sics.cooja.GUI;
-import se.sics.cooja.Mote;
-import se.sics.cooja.MoteType;
-import se.sics.cooja.Simulation;
-import se.sics.cooja.interfaces.Radio;
-import se.sics.cooja.radiomediums.DGRMDestinationRadio;
-import se.sics.cooja.radiomediums.DirectedGraphMedium;
-import se.sics.cooja.radiomediums.DirectedGraphMedium.Edge;
+import org.contikios.cooja.Cooja;
+import org.contikios.cooja.Mote;
+import org.contikios.cooja.MoteType;
+import org.contikios.cooja.Simulation;
+import org.contikios.cooja.interfaces.Radio;
+import org.contikios.cooja.radiomediums.DGRMDestinationRadio;
+import org.contikios.cooja.radiomediums.DirectedGraphMedium;
+import org.contikios.cooja.radiomediums.DirectedGraphMedium.Edge;
 
 public class RealSim implements Observer  {
 	private static Logger	logger			= Logger.getLogger(RealSim.class);
 	Simulation sim;
-	GUI gui;
+	Cooja cooja;
 	private ArrayList<RealSimEdge> delayedEdges = new ArrayList<RealSimEdge>();
   
 	
 	
-	RealSim(Simulation sim, GUI gui){
+	RealSim(Simulation sim, Cooja cooja){
 		this.sim = sim;
-		this.gui = gui;
+		this.cooja = cooja;
 	}
 	
 	
@@ -74,9 +74,6 @@ public class RealSim implements Observer  {
 		
 		//Add after everything is configured
 		sim.addMote(mote);
-		gui.updateGUIComponentState();
-
-
 		
 		return true;
 	}

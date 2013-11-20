@@ -56,12 +56,12 @@ import javax.swing.JToggleButton;
 
 import org.apache.log4j.Logger;
 
-import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
-import se.sics.cooja.PluginType;
-import se.sics.cooja.Simulation;
-import se.sics.cooja.VisPlugin;
-import se.sics.cooja.radiomediums.DirectedGraphMedium;
+import org.contikios.cooja.ClassDescription;
+import org.contikios.cooja.Cooja;
+import org.contikios.cooja.PluginType;
+import org.contikios.cooja.Simulation;
+import org.contikios.cooja.VisPlugin;
+import org.contikios.cooja.radiomediums.DirectedGraphMedium;
 
 
 
@@ -210,10 +210,10 @@ public class RealSimLive extends VisPlugin implements ActionListener {
 	
 	RealSim rs = null;
 	
-	public RealSimLive(Simulation simulation, GUI gui) {
-		super("RealSim Live", gui);
+	public RealSimLive(Simulation simulation, Cooja cooja) {
+		super("RealSim Live", cooja);
 		this.sim = simulation;
-		rs = new RealSim(sim, gui);
+		rs = new RealSim(sim, cooja);
 	}
 	
 	public void startPlugin() {

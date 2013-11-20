@@ -33,14 +33,14 @@ import org.apache.log4j.Logger;
 import org.jdom.Attribute;
 import org.jdom.Element;
 
-import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
-import se.sics.cooja.MoteType;
-import se.sics.cooja.PluginType;
-import se.sics.cooja.Simulation;
-import se.sics.cooja.TimeEvent;
-import se.sics.cooja.VisPlugin;
-import se.sics.cooja.radiomediums.DirectedGraphMedium;
+import org.contikios.cooja.ClassDescription;
+import org.contikios.cooja.Cooja;
+import org.contikios.cooja.MoteType;
+import org.contikios.cooja.PluginType;
+import org.contikios.cooja.Simulation;
+import org.contikios.cooja.TimeEvent;
+import org.contikios.cooja.VisPlugin;
+import org.contikios.cooja.radiomediums.DirectedGraphMedium;
 
 @ClassDescription("RealSim File")
 @PluginType(PluginType.SIM_PLUGIN)
@@ -55,7 +55,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 	JButton			select_file		= new JButton("Open File");
 	JComboBox				default_node;
 	JButton			load			= new JButton("Import");
-	GUI gui;
+	Cooja cooja;
 	JCheckBox loadFile			= new JCheckBox("Load from File instead of Simulation");
 	JTextPane logOutput          = new JTextPane();
 	private final static String failmsg = "This Plugin needs a DGRM.";
@@ -66,17 +66,17 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 
 	
 	
-	public RealSimFile(Simulation simulation, GUI gui) {
-		super("RealSim File", gui, false);
+	public RealSimFile(Simulation simulation, Cooja cooja) {
+		super("RealSim File", cooja, false);
 		sim = simulation;
-		this.gui = gui;
+		this.cooja = cooja;
 	}
 	
 	public void startPlugin() {
 		
 		if (!(sim.getRadioMedium() instanceof DirectedGraphMedium)) {
 			logger.error(failmsg);
-			if(GUI.isVisualized()){
+			if(Cooja.isVisualized()){
 				JOptionPane.showMessageDialog(this, failmsg, "Unsufficiant environment", JOptionPane.WARNING_MESSAGE);
 				add(new JLabel(failmsg));
 			}
@@ -157,7 +157,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		
 		add("Center",  new JScrollPane(controlPanel));
 		
-		rs = new RealSim(sim, gui);
+		rs = new RealSim(sim, cooja);
 		SimEvent.setRs(rs);
 		
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -199,8 +199,8 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 				sc = new BufferedReader(new FileReader(filename));
 			} catch(Exception e){
 				logger.fatal("Unable to open file: " + filename);
-				if (GUI.isVisualized()) {
-					JOptionPane.showMessageDialog(GUI.getTopParentContainer(),
+				if (Cooja.isVisualized()) {
+					JOptionPane.showMessageDialog(Cooja.getTopParentContainer(),
 							"Unable to open File: " + filename, 
 							"RealSimFile - Error",
 							JOptionPane.ERROR_MESSAGE);
@@ -335,7 +335,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		Vector<Element> config = new Vector<Element>();
 		Element element;
 		element = new Element("Filename");
-		element.setText(gui.createPortablePath(new File(filename.getText())).getPath());
+		element.setText(cooja.createPortablePath(new File(filename.getText())).getPath());
 		config.add(element);
 		
 		config.add(new Element("Load").setText(loadFile.isSelected()?"true":"false"));
@@ -360,7 +360,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		for (Element element : configXML) {
 			String name = element.getName();
 			if(name.equals("Filename")){
-				filename.setText(gui.restorePortablePath(new File(element.getText())).getPath());
+				filename.setText(cooja.restorePortablePath(new File(element.getText())).getPath());
 			}
 			if(name.equals("Load")){
 				loadFile.setSelected(element.getText().toLowerCase().equals("true"));
@@ -372,7 +372,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 				SimEvent se = null;
 				String intfClass = element.getText().trim();
 				
-				Class<? extends SimEvent> rseClass = sim.getGUI().tryLoadClass(this, SimEvent.class, intfClass);
+				Class<? extends SimEvent> rseClass = sim.getCooja().tryLoadClass(this, SimEvent.class, intfClass);
 				
 				//Class<?> rseClass = null;
 				

@@ -95,15 +95,15 @@ import javax.swing.JToggleButton;
 
 import org.apache.log4j.Logger;
 
-import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
-import se.sics.cooja.Mote;
-import se.sics.cooja.PluginType;
-import se.sics.cooja.Simulation;
-import se.sics.cooja.VisPlugin;
-import se.sics.cooja.interfaces.Position;
-import se.sics.cooja.radiomediums.DGRMDestinationRadio;
-import se.sics.cooja.radiomediums.DirectedGraphMedium;
+import org.contikios.cooja.ClassDescription;
+import org.contikios.cooja.Cooja;
+import org.contikios.cooja.Mote;
+import org.contikios.cooja.PluginType;
+import org.contikios.cooja.Simulation;
+import org.contikios.cooja.VisPlugin;
+import org.contikios.cooja.interfaces.Position;
+import org.contikios.cooja.radiomediums.DGRMDestinationRadio;
+import org.contikios.cooja.radiomediums.DirectedGraphMedium;
 
 class Node {
 	int		id;
@@ -797,8 +797,8 @@ public class SpringLayout extends VisPlugin implements ActionListener, ItemListe
 	int	edgeHash;
 	int	moteHash;
 	
-	public SpringLayout(Simulation sim,  GUI gui) throws Exception {
-		super("SpringLayout", gui);
+	public SpringLayout(Simulation sim,  Cooja cooja) throws Exception {
+		super("SpringLayout", cooja);
 		
 		this.sim = sim;
 		
