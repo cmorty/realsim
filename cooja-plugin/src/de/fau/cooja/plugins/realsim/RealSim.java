@@ -13,6 +13,7 @@ import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteType;
 import org.contikios.cooja.Simulation;
 import org.contikios.cooja.interfaces.Radio;
+import org.contikios.cooja.radiomediums.AbstractRadioMedium;
 import org.contikios.cooja.radiomediums.DGRMDestinationRadio;
 import org.contikios.cooja.radiomediums.DirectedGraphMedium;
 import org.contikios.cooja.radiomediums.DirectedGraphMedium.Edge;
@@ -184,6 +185,17 @@ public class RealSim implements Observer  {
 		
 	}
 
+	public boolean setBaseRssi(int moteid, double baserssi){
+		AbstractRadioMedium dgm = (AbstractRadioMedium) sim.getRadioMedium();
+		Mote mote = sim.getMoteWithID(moteid);
+		
+		if (mote == null) return false;
+
+		dgm.setBaseRssi(mote.getInterfaces().getRadio(), baserssi);
+
+		return true;
+	}
+	
 	@Override
 	public void update(Observable o, Object arg) {
 		 if (!(arg instanceof Mote)) {

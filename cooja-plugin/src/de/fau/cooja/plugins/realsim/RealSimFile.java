@@ -258,6 +258,15 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 						int dst = strToId(t[3]);
 						SimEvent se = new SimEventRmEdge(time, src, dst);
 						events.add((SimEvent) se);
+					}
+					
+					else if (t[1].equals("baserssi")) {
+						exind = 2; exreason = "mote Id";
+						int moteid = strToId(t[2]);
+						exind = 3; exreason = "baseRSSI";
+						double baserssi = new Double(t[3].replace(',', '.'));
+						SimEvent se = new SimEventBaseRssi(time, moteid, baserssi);
+						events.add((SimEvent) se);
 					} else {
 						logger.warn("Unknow command in line " + ln + ". - Igrnoring" );
 					}
@@ -647,6 +656,60 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 				throw new IllegalArgumentException("RSE not set");
 			}
 		}
+	}
+	
+	class SimEventBaseRssi extends SimEvent {
+		int	moteid;
+		double baserssi;
+		
+		public SimEventBaseRssi(long time, int moteid, double baserssi) {
+			super(time);
+			this.moteid = moteid;
+			this.baserssi = baserssi;
+		}
+		
+		public SimEventBaseRssi(long time, Collection<Element> configXML) {
+			super(time);
+			if (!setConfigXML(configXML)) {
+				throw new IllegalArgumentException("id not set");
+			}
+		}
+		
+		@Override
+		public void action() {
+			rs.setBaseRssi(moteid, baserssi);
+		}
+		
+		@Override
+		public Collection<Element> getConfigXML() {
+			Vector<Element> config = new Vector<Element>();
+			Element el;
+			Element elr;
+			config.add(el = new Element("moteid"));
+			el.setText(Integer.toString(moteid));
+			config.add(elr = new Element("baserssi"));
+			elr.setText(Double.toString(baserssi));
+			return config;
+		}
+		
+		public boolean setConfigXML(Collection<Element> configXML) {
+			for (Element element : configXML) {
+				String name = element.getName().toLowerCase();
+				String value = element.getText();
+				if (name.equals("moteid")) {
+					moteid = Integer.parseInt(value);
+				} else if (name.equals("baserssi")) {
+					baserssi = Double.parseDouble(value);
+				}
+				
+			}
+			if (moteid == 0)
+				return false;
+			return true;
+		}
+		
+
+		
 	}
 	
 }
