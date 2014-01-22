@@ -16,3 +16,5 @@ tools/tunslip6
 /cooja
 /bin
 /lib
+cooja-plugin/lib
+cooja-plugin/build
