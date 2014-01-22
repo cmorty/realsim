@@ -60,6 +60,7 @@ import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.Cooja;
 import org.contikios.cooja.PluginType;
 import org.contikios.cooja.Simulation;
+import org.contikios.cooja.SupportedArguments;
 import org.contikios.cooja.VisPlugin;
 import org.contikios.cooja.radiomediums.DirectedGraphMedium;
 
@@ -70,6 +71,7 @@ import org.contikios.cooja.radiomediums.DirectedGraphMedium;
 
 @ClassDescription("RealSim Live")
 @PluginType(PluginType.SIM_PLUGIN)
+@SupportedArguments(radioMediums = {DirectedGraphMedium.class})
 public class RealSimLive extends VisPlugin implements ActionListener {
 	
 	private static Logger	logger			= Logger.getLogger(RealSimLive.class);
@@ -198,8 +200,6 @@ public class RealSimLive extends VisPlugin implements ActionListener {
 	private static final long	serialVersionUID	= 4368807123350830772L;
 	protected Simulation		sim;
 	
-	private final static String failmsg = "This Plugin needs a DGRM.";
-	
 	public JPanel				controlPanel		= new JPanel();
 	JToggleButton				set_port			= new JToggleButton("Click to start with port:");
 	JTextField					insert_port			= new JTextField(4);
@@ -217,13 +217,6 @@ public class RealSimLive extends VisPlugin implements ActionListener {
 	}
 	
 	public void startPlugin() {
-		//Do not start if we do not support the medium
-		if (!(sim.getRadioMedium() instanceof DirectedGraphMedium)) {
-			JOptionPane.showMessageDialog(this, failmsg, "Unsufficiant environment", JOptionPane.WARNING_MESSAGE);
-			add(new JLabel(failmsg));
-			
-			return;
-		}
 		
 		default_node = new JComboBox(new MoteTypeComboboxModel(sim));
 		
