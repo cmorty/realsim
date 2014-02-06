@@ -166,5 +166,9 @@ void handlestats(struct neighbor *n)
 	//printf("RSSI: %i, %i, %i\n", ns->rssi,  n->rssi ,  n->recv_count);
 
 }
-
+void pack_brssistats(struct brssi b){
+	printf("NOT IMPLEMENTED YET");
+	//b.brssi_avg = b.brssi_sum / b.counter;
+	//printf("bRSSI: %i %i %i %li %i\n", b.brssi_min, b.brssi_avg, b.brssi_max, b.brssi_sum, b.counter);
+}
 
