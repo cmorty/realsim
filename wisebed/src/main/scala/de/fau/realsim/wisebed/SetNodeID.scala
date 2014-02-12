@@ -1,31 +1,23 @@
 package de.fau.realsim.wisebed
 
-
-
 import java.util.Calendar
 import java.util.GregorianCalendar
-import scala.collection.JavaConversions.asScalaBuffer
+
 import scala.xml.XML
-import org.apache.log4j.Level
-import de.fau.wisebed.Reservation.reservation2CRD
-import de.fau.wisebed.messages.MessageWaiter
-import de.uniluebeck.itm.tr.util.Logging
-import eu.wisebed.api.common._
-import de.fau.wisebed.jobs.MoteAliveState._
+
+import org.slf4j.LoggerFactory
+
+import de.fau.wisebed.Experiment
+import de.fau.wisebed.Testbed
+import de.fau.wisebed.WisebedApiConversions.message2wmessage
+import de.fau.wisebed.jobs.NodeAliveState.Alive
+import de.fau.wisebed.jobs.NodeFlashState
+import de.fau.wisebed.messages.MessageInput
 import de.fau.wisebed.messages.MessageLogger
 import de.fau.wisebed.messages.MsgLiner
-import de.fau.wisebed.wrappers._
-import de.fau.wisebed.wrappers.WrappedChannelHandlerConfiguration._
-import de.fau.wisebed.wrappers.WrappedMessage._
-import de.fau.wisebed._
-import org.slf4j.LoggerFactory
-import de.fau.wisebed.jobs.MoteFlashState
-import scala.collection.JavaConversions._
-import java.text.SimpleDateFormat
-import java.util.Date
-import scala.collection.mutable.Buffer
-import de.fau.wisebed.messages.MessageInput
 import de.fau.wisebed.messages.NodeFilter
+import de.fau.wisebed.util.Logging.setDefaultLogger
+import de.fau.wisebed.wrappers.ChannelHandlerConfiguration
 
 
 
@@ -38,7 +30,7 @@ object SetNodeID {
 	
 	
 	def main(args: Array[String]) {
-		Logging.setLoggingDefaults(Level.INFO) // new PatternLayout("%-11d{HH:mm:ss,SSS} %-5p - %m%n"))
+		setDefaultLogger
 
 		//Get Config
 
@@ -164,7 +156,7 @@ object SetNodeID {
 			cleanup(1)
 		} else {
 			log.info("Setting Handler: {}", setHand)
-			val chd = exp.setChannelHandler(usemotes, new WrappedChannelHandlerConfiguration("contiki"))
+			val chd = exp.setChannelHandler(usemotes, new ChannelHandlerConfiguration("contiki"))
 			if (!chd.success) {
 				log.error("Failed setting Handler")
 				cleanup(1)
@@ -212,7 +204,7 @@ object SetNodeID {
 			log.info("Flashing  - try " + t)
 			val flashj =  exp.flash(getClass.getResourceAsStream("/burn-nodeid.ihex"), motes)
 			
-			motes = flashj().filter(_._2 != MoteFlashState.OK).map(_._1).toList
+			motes = flashj().filter(_._2 != NodeFlashState.OK).map(_._1).toList
 
 			if (motes.size > 0) {
 				log.error("Failed to flash nodes: " + motes.mkString(", "))
@@ -223,18 +215,6 @@ object SetNodeID {
 		if (motes.size > 0) {
 			cleanup(1)
 		}
-
-		
-
-		//Add other message inputs
-		
-		
-		val endt = new GregorianCalendar
-		endt.add(Calendar.MINUTE, 3)
-		while(exp.active && endt.before(new GregorianCalendar)){
-			Thread.sleep(1000);			
-		}
-
 		
 	}
 }

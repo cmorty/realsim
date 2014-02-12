@@ -1,14 +1,16 @@
 package de.fau.realsim.wisebed
 
-import java.net.Socket
-import java.net.InetAddress
-import de.fau.wisebed.messages.MessageInput
-import eu.wisebed.api._
 import java.io.PrintStream
+import java.net.InetAddress
+import java.net.Socket
 import java.util.Date
-import de.fau.wisebed.messages.MsgLiner
-import de.fau.wisebed.wrappers.WrappedMessage._
+
 import org.slf4j.LoggerFactory
+
+import de.fau.wisebed.WisebedApiConversions.message2wmessage
+import de.fau.wisebed.messages.MessageInput
+import de.fau.wisebed.messages.MsgLiner
+import eu.wisebed.api.common
 
 class RealSimLiveConn(host:String = "localhost", port:Int = 1337, timeout:Int = 120) extends MessageInput {
 	

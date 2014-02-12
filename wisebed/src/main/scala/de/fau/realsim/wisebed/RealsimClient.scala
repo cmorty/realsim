@@ -5,23 +5,21 @@ import java.util.GregorianCalendar
 import scala.collection.JavaConversions.asScalaBuffer
 import scala.xml.XML
 import org.apache.log4j.Level
-import de.fau.wisebed.Reservation.reservation2CRD
 import de.fau.wisebed.messages.MessageWaiter
 import eu.wisebed.api.common._
-import de.fau.wisebed.jobs.MoteAliveState._
 import de.fau.wisebed.messages.MessageLogger
 import de.fau.wisebed.messages.MsgLiner
 import de.fau.wisebed.wrappers._
-import de.fau.wisebed.wrappers.WrappedChannelHandlerConfiguration._
-import de.fau.wisebed.wrappers.WrappedMessage._
 import de.fau.wisebed._
 import org.slf4j.LoggerFactory
-import de.fau.wisebed.jobs.MoteFlashState
 import scala.collection.JavaConversions._
 import java.text.SimpleDateFormat
 import java.util.Date
 import scala.collection.mutable.Buffer
 import de.fau.wisebed.messages.MessageInput
+import de.fau.wisebed.WisebedApiConversions._
+import de.fau.wisebed.jobs.NodeAliveState._
+import de.fau.wisebed.jobs.NodeFlashState
 
 object RealsimClient {
 	val log = LoggerFactory.getLogger(this.getClass)
@@ -92,10 +90,9 @@ object RealsimClient {
 				val out = new java.io.PrintWriter(dt)
 				var flush = (new Date).getTime
 				val logger = new MessageLogger(mi => {
-					import wrappers.WrappedMessage._
 					out.println(df.format(new Date) + " " + mi.node + ":" + mi.dataString)
 					val now = (new Date).getTime
-					if (now - flush > 1000) {
+					if (now - flush > 1000) { //Flush regularly
 						flush = now
 						out.flush
 					}
@@ -216,7 +213,7 @@ object RealsimClient {
 			cleanup(1)
 		} else {
 			log.info("Setting Handler: {}", setHand)
-			val chd = exp.setChannelHandler(usemotes, new WrappedChannelHandlerConfiguration("contiki"))
+			val chd = exp.setChannelHandler(usemotes, new ChannelHandlerConfiguration("contiki"))
 			if (!chd.success) {
 				log.error("Failed setting Handler")
 				cleanup(1)
@@ -232,7 +229,7 @@ object RealsimClient {
 				if (exp_firmware != "") exp.flash(exp_firmware, motes)
 				else exp.flash(getClass.getResourceAsStream("/statprinter.ihex"), motes)
 			}
-			motes = flashj().filter(_._2 != MoteFlashState.OK).map(_._1).toList
+			motes = flashj().filter(_._2 != NodeFlashState.OK).map(_._1).toList
 
 			if (motes.size > 0) {
 				log.error("Failed to flash nodes: " + motes.mkString(", "))
@@ -271,7 +268,9 @@ object RealsimClient {
 		log.info("Setting Timer")
 		val endt = new GregorianCalendar
 		endt.add(Calendar.MINUTE, exp_time)
-		while (exp.active && endt.after(new GregorianCalendar)) {
+		
+		
+		while (endt.after(new GregorianCalendar)) {
 			//			log.info(endt.toString() + " -> " + (new GregorianCalendar).toString )
 			Thread.sleep(1000)
 		}
