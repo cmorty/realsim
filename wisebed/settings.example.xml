@@ -3,7 +3,7 @@
 	<!-- How long to reserve the Network in min  - You may use an expression -->
 	<time>60 * 24</time> <!-- Run 24 h -->
 	
-	<!-- Set firmware. If none is set the firmware packed in th jar will be used. -->
+	<!-- Set firmware. If none is set the firmware packed in the jar will be used. -->
 	<!-- 
 	<firmware>../sky/statprinter.ihex</firmware> 
 	-->
@@ -15,14 +15,6 @@
 	-->
 	<!-- files are passed to SimpleDateFormat
 		Multiple output are allowed -->
-
-	<!--RealsimOutput-->
-	<!--
-	<realsim>
-		<file>yyyy-MM-dd-HH:mm:ss'.rs'</file>
-		<samples>10</samples> --><!-- Number of samples to calculate an average --><!--
-	</realsim> 
-	-->
 
 	<!-- Output log -->
 	<!--	

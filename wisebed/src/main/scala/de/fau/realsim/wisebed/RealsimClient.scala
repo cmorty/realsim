@@ -23,9 +23,6 @@ import java.util.Date
 import scala.collection.mutable.Buffer
 import de.fau.wisebed.messages.MessageInput
 
-
-
-
 object RealsimClient {
 	val log = LoggerFactory.getLogger(this.getClass)
 
@@ -33,28 +30,27 @@ object RealsimClient {
 	val time = 30 * 60
 
 	def main(args: Array[String]) {
-		
+
 		val handler = new ExHandler();
 	    Thread.setDefaultUncaughtExceptionHandler(handler);
 	    ;{
-	    	import org.apache.log4j._
-	    	val DEFAULT_PATTERN_LAYOUT = "%-23d{yyyy-MM-dd HH:mm:ss,SSS} | %-30.30t | %-30.30c{1} | %-5p | %m%n"
-	    	val oc = new ConsoleAppender(new PatternLayout(DEFAULT_PATTERN_LAYOUT))
-	    	Logger.getRootLogger.setLevel(org.apache.log4j.Level.DEBUG)
+			import org.apache.log4j._
+			val DEFAULT_PATTERN_LAYOUT = "%-23d{yyyy-MM-dd HH:mm:ss,SSS} | %-30.30t | %-30.30c{1} | %-5p | %m%n"
+			val oc = new ConsoleAppender(new PatternLayout(DEFAULT_PATTERN_LAYOUT))
+			Logger.getRootLogger.setLevel(org.apache.log4j.Level.DEBUG)
 			Logger.getRootLogger.addAppender(oc)
-	    }
-			
+		}
 
 		//Get Config
 
 		val conffile = { if (args.length > 1) args(1) else "config.xml" }
 
 		log.info("Loading Wisebed config: " + conffile)
-		
+
 		val config = XML.load(conffile)
 
 		val smEndpointURL = (config \ "smEndpointURL").text
-	
+
 		val prefix = (config \ "prefix").text
 		val login = (config \ "login").text
 		val password = (config \ "pass").text
@@ -67,73 +63,57 @@ object RealsimClient {
 		val exp_motes = (settings \ "mote").map(_.text.trim)
 		log.info("Time String: " + (settings \ "time").text.trim)
 		val exp_time = new FormulaParser().evaluate((settings \ "time").text.trim).toInt
-		
+
 		{
-			 var tm = exp_time;
-			 var str = ""
-			 str = ":%02d".format(tm % 60) + str;
-			 tm /=60;
-			 str = "d %02d".format(tm % 24) + str;
-			 tm /= 24;
-			 str = tm.toString + str;
-			 
-			 log.info("TimeCalculated: " + str)
+			var tm = exp_time;
+			var str = ""
+			str = ":%02d".format(tm % 60) + str;
+			tm /= 60;
+			str = "d %02d".format(tm % 24) + str;
+			tm /= 24;
+			str = tm.toString + str;
+
+			log.info("TimeCalculated: " + str)
 		}
-		
-		
+
 		val exp_firmware = (settings \ "firmware").text.trim
 		val outputs = (settings \ "output")
-		val rsout = (settings \ "realsim")
 		val rsClient = (settings \ "rsClient")
-		
+
 		val contError = (settings \ "onError").text.trim.toLowerCase.equals("continue")
-		
-		
-		
-		
+
 		// Generate message inputs to make sure everything is ok
 		val msgInpts = {
 			// Add normal loggers
-			val rv = Buffer[MessageInput]() 
-			val df  = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-			for(outp <- outputs){
-				val dt  = new SimpleDateFormat(outp.text.trim).format(new Date)
+			val rv = Buffer[MessageInput]()
+			val df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+			for (outp <- outputs) {
+				val dt = new SimpleDateFormat(outp.text.trim).format(new Date)
 				val out = new java.io.PrintWriter(dt)
 				var flush = (new Date).getTime
 				val logger = new MessageLogger(mi => {
-					import wrappers.WrappedMessage._					
-					out.println(df.format(new Date)+ " " + mi.node + ":" + mi.dataString)
+					import wrappers.WrappedMessage._
+					out.println(df.format(new Date) + " " + mi.node + ":" + mi.dataString)
 					val now = (new Date).getTime
-					if(now - flush > 1000){
+					if (now - flush > 1000) {
 						flush = now
 						out.flush
-					} 
+					}
 					//
-					
+
 				}) with MsgLiner
-				
-				logger.runOnExit({out.close})
+
+				logger.runOnExit({ out.close })
 				rv += logger
 			}
-			
-			
-			for(rs <- rsout){
-				val fname = new SimpleDateFormat((rs \ "file").text.trim).format(new Date)
-				val avg:Int = {
-					val fld = (rs \ "time").text.trim
-					if(fld.length > 0 ) new FormulaParser().evaluate(fld).toInt
-					else 10
-				}
-				rv += new RealSimFile(fname, avg);
-			}
-			for(rsConf <- rsClient){
+
+			for (rsConf <- rsClient) {
 				rv += new RealSimLiveConn((rsConf \ "host").text.trim, (rsConf \ "port").text.trim.toInt)
 			}
-			
+
 			rv.toSeq
 		}
-		
-		
+
 		//Get Motes
 		log.info("Starting Testbed")
 		val tb = new Testbed(smEndpointURL)
@@ -141,22 +121,19 @@ object RealsimClient {
 		val motesAvail = tb.getNodes("telosb")
 		log.info("Motes: " + motesAvail.mkString(", "))
 
-		
-		
 		if (!exp_motes.forall(motesAvail.contains(_))) {
 			log.error("Not all motes available. Have: {}; Need: {} ", motesAvail.mkString(", "), exp_motes.mkString(", "))
 			sys.exit(1)
 		}
-		
-		var usemotes = {if(exp_motes.length > 0) exp_motes else motesAvail}
-		
+
+		var usemotes = { if (exp_motes.length > 0) exp_motes else motesAvail }
+
 		log.info("Logging in: \"" + prefix + "\"/\"" + login + "\":\"" + password + "\"")
 		tb.addCredencials(prefix, login, password)
 
-		
 		log.info("Requesting reservations")
 		//Three minutes to flash
-		var res = tb.getReservations(exp_time + 3) 
+		var res = tb.getReservations(exp_time + 3)
 
 		def cleanup(rv: Int) {
 			log.info("Removing Reservation")
@@ -168,18 +145,16 @@ object RealsimClient {
 
 		for (r <- res) {
 			log.info("Got Reservation: " + r.dateString("yyyy-MM-dd'T'HH:mm:ss") + " for " + r.getNodeURNs.mkString(", "))
-			if(r.now){
+			if (r.now) {
 				val to = new GregorianCalendar
 				to.add(Calendar.MINUTE, exp_time - 1)
-				if(to.after(r.to)){
+				if (to.after(r.to)) {
 					log.error("Experimentation slot to short to run experiment")
 					cleanup(3)
 				}
 			}
 		}
 
-		
-		
 		if (!res.exists(_.now)) {
 			log.info("No Reservations or in the Past- Requesting")
 			val from = new GregorianCalendar
@@ -192,7 +167,7 @@ object RealsimClient {
 		}
 
 		val exp = new Experiment(res.toList, tb)
-/*
+		/*
 		
 		Runtime.getRuntime.addShutdownHook(new Thread {
 			override def run  {
@@ -214,20 +189,19 @@ object RealsimClient {
 
 		val activemotes = (for ((m, s) <- status; if (s == Alive)) yield m).toList
 
-		log.info("Active Motes: " +  activemotes.mkString(", "))
-		
-		
-		if(exp_motes.length > 0) {
+		log.info("Active Motes: " + activemotes.mkString(", "))
+
+		if (exp_motes.length > 0) {
 			//Test whether all motes are available
 			if (!exp_motes.forall(activemotes.contains(_))) {
-				log.error("Not all motes active. Have: " +  motesAvail.mkString(", ") + "; Need: " +   exp_motes.mkString(", ") + 
-						"; Miss: " + exp_motes.filter(!activemotes.contains(_))) 
+				log.error("Not all motes active. Have: " + motesAvail.mkString(", ") + "; Need: " + exp_motes.mkString(", ") +
+					"; Miss: " + exp_motes.filter(!activemotes.contains(_)))
 				cleanup(1)
 			}
 		} else {
 			usemotes = activemotes
 		}
-		
+
 		log.info("Requesting Supported Channel Handlers")
 		val handls = exp.supportedChannelHandlers
 
@@ -249,16 +223,13 @@ object RealsimClient {
 			}
 		}
 
-	
-
-		
 		//Go, flash go.
 		var motes = usemotes
 
 		for (t <- 1 to 5) if (motes.size > 0) {
 			log.info("Flashing  - try " + t)
 			val flashj = {
-				if(exp_firmware != "") exp.flash(exp_firmware, motes)
+				if (exp_firmware != "") exp.flash(exp_firmware, motes)
 				else exp.flash(getClass.getResourceAsStream("/statprinter.ihex"), motes)
 			}
 			motes = flashj().filter(_._2 != MoteFlashState.OK).map(_._1).toList
@@ -269,66 +240,63 @@ object RealsimClient {
 			}
 		}
 		log.info("Done flashing")
-		
+
 		//Are there still motes to flash?
 		if (motes.size > 0) {
-			if(contError) {
+			if (contError) {
 				log.warn("Continueing despite error")
 			} else {
 				cleanup(1)
 			}
 		}
 
-		
 		//Add general Logger
 		log.info("Adding generic Logger")
-		
+
 		{
 			var ctr = 0
 			exp.addMessageInput(new MessageLogger(mi => {
-				ctr += 1 
-				if(ctr == 500) {
+				ctr += 1
+				if (ctr == 500) {
 					log.info("got 500 Messages")
 					ctr = 0;
 				}
 			}) with MsgLiner)
 		}
-		
+
 		//Add other message inputs
 		log.info("Adding additional Inputs")
 		msgInpts.foreach(exp.addMessageInput(_))
-		
-		
+
 		log.info("Setting Timer")
 		val endt = new GregorianCalendar
 		endt.add(Calendar.MINUTE, exp_time)
-		while(exp.active && endt.after(new GregorianCalendar)){
-//			log.info(endt.toString() + " -> " + (new GregorianCalendar).toString )
+		while (exp.active && endt.after(new GregorianCalendar)) {
+			//			log.info(endt.toString() + " -> " + (new GregorianCalendar).toString )
 			Thread.sleep(1000)
 		}
 		log.info("Done");
 		val st = Thread.getAllStackTraces
-           
-        for(t <- st){
-            if(t._1.isDaemon()){
-                println("Deamon: " + t._1.toString)
-            } else {
-                println("Thread: " +  t._1.toString)
-                t._2.foreach(println(_))
-            }
-        }
+
+		for (t <- st) {
+			if (t._1.isDaemon()) {
+				println("Deamon: " + t._1.toString)
+			} else {
+				println("Thread: " + t._1.toString)
+				t._2.foreach(println(_))
+			}
+		}
 		cleanup(0)
 	}
 
 }
 
-
 class ExHandler extends Thread.UncaughtExceptionHandler {
-  def uncaughtException( t:Thread,  e:Throwable) {
-  	System.err.println("Throwable: " + e.getMessage());
-    System.err.println(t.toString());
-    System.err.println("Terminating");
-    sys.exit(55)
-  }
+	def uncaughtException(t: Thread, e: Throwable) {
+		System.err.println("Throwable: " + e.getMessage());
+		System.err.println(t.toString());
+		System.err.println("Terminating");
+		sys.exit(55)
+	}
 }
 
