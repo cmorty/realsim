@@ -1,25 +1,25 @@
 package de.fau.realsim.wisebed
 
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.GregorianCalendar
-import scala.collection.JavaConversions.asScalaBuffer
+
+import scala.collection.JavaConversions.mapAsScalaMap
+import scala.collection.mutable.Buffer
 import scala.xml.XML
-import org.apache.log4j.Level
-import de.fau.wisebed.messages.MessageWaiter
-import eu.wisebed.api.common._
+
+import org.slf4j.LoggerFactory
+
+import de.fau.wisebed.Experiment
+import de.fau.wisebed.Testbed
+import de.fau.wisebed.WisebedApiConversions.message2wmessage
+import de.fau.wisebed.jobs.NodeAliveState.Alive
+import de.fau.wisebed.jobs.NodeFlashState
+import de.fau.wisebed.messages.MessageInput
 import de.fau.wisebed.messages.MessageLogger
 import de.fau.wisebed.messages.MsgLiner
-import de.fau.wisebed.wrappers._
-import de.fau.wisebed._
-import org.slf4j.LoggerFactory
-import scala.collection.JavaConversions._
-import java.text.SimpleDateFormat
-import java.util.Date
-import scala.collection.mutable.Buffer
-import de.fau.wisebed.messages.MessageInput
-import de.fau.wisebed.WisebedApiConversions._
-import de.fau.wisebed.jobs.NodeAliveState._
-import de.fau.wisebed.jobs.NodeFlashState
+import de.fau.wisebed.wrappers.ChannelHandlerConfiguration
 
 object RealsimClient {
 	val log = LoggerFactory.getLogger(this.getClass)
@@ -31,13 +31,7 @@ object RealsimClient {
 
 		val handler = new ExHandler();
 	    Thread.setDefaultUncaughtExceptionHandler(handler);
-	    ;{
-			import org.apache.log4j._
-			val DEFAULT_PATTERN_LAYOUT = "%-23d{yyyy-MM-dd HH:mm:ss,SSS} | %-30.30t | %-30.30c{1} | %-5p | %m%n"
-			val oc = new ConsoleAppender(new PatternLayout(DEFAULT_PATTERN_LAYOUT))
-			Logger.getRootLogger.setLevel(org.apache.log4j.Level.DEBUG)
-			Logger.getRootLogger.addAppender(oc)
-		}
+	    de.fau.wisebed.util.Logging.setDefaultLogger
 
 		//Get Config
 

@@ -11,6 +11,11 @@
 			<artifactId>scala-API</artifactId>
 			<version>1.1.0</version>
 		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+			<version>1.7.6</version>
+		</dependency>
 	</dependencies>
 	<build>
 		<pluginManagement>
@@ -83,7 +88,9 @@
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>de.fau.realsim.wisebed.RealsimClient</mainClass>
+							<mainClass>de.fau.realsim.wisebed.RealsimClient</mainClass>,
+							<addClasspath>true</addClasspath>
+							<classpathPrefix>lib/</classpathPrefix>
 						</manifest>
 					</archive>
 				</configuration>
