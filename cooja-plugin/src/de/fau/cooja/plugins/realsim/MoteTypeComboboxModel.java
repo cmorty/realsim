@@ -10,7 +10,7 @@ import javax.swing.ComboBoxModel;
 import org.contikios.cooja.MoteType;
 import org.contikios.cooja.Simulation;
 
-public class MoteTypeComboboxModel extends AbstractListModel implements Observer, ComboBoxModel {
+public class MoteTypeComboboxModel extends AbstractListModel<Object> implements Observer, ComboBoxModel<Object> {
 	private Simulation				sim;
 	protected ArrayList<lMoteType>	mtl			= new ArrayList<lMoteType>();
 	protected lMoteType						selected	= null;

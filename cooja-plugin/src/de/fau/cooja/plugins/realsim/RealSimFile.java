@@ -18,7 +18,6 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -51,21 +50,19 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 	private static Logger	logger			= Logger.getLogger(RealSimFile.class);
 	protected static Simulation	sim;
 	
-	RealSim					rs;
-	public JPanel			controlPanel	= new JPanel();
-	JTextField				filename		= new JTextField("/home/inf4/morty/tmp/rsdump");
-	JButton			select_file		= new JButton("Open File");
-	JComboBox				default_node;
-	JButton			load			= new JButton("Import");
+	RealSim rs;
+	public JPanel controlPanel = new JPanel();
+	JTextField filename = new JTextField("/home/inf4/morty/tmp/rsdump");
+	JButton select_file = new JButton("Open File");
+	JComboBox<Object> default_node;
+	JButton load = new JButton("Import");
 	Cooja cooja;
-	JCheckBox loadFile			= new JCheckBox("Load from File instead of Simulation");
-	JTextPane logOutput          = new JTextPane();
-		
-	ArrayList<SimEvent>		events = new ArrayList<SimEvent>(); //Make sure there is an empty list.
-	int						pos;
+	JCheckBox loadFile = new JCheckBox("Load from File instead of Simulation");
+	JTextPane logOutput = new JTextPane();
 	
-
-	
+	ArrayList<SimEvent> events = new ArrayList<SimEvent>(); // Make sure there
+															// is an empty list.
+	int pos;
 	
 	public RealSimFile(Simulation simulation, Cooja cooja) {
 		super("RealSim File", cooja, false);
@@ -82,7 +79,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		System.out.println("TH: " + taa.getThreshold().toString());
 		
 		//Init components
-		default_node = new JComboBox(new MoteTypeComboboxModel(sim));
+		default_node = new JComboBox<Object>(new MoteTypeComboboxModel(sim));
 		
 		filename.addActionListener(this);
 		select_file.addActionListener(this);
