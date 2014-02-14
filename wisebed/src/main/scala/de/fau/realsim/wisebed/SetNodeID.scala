@@ -68,7 +68,7 @@ object SetNodeID {
 		
 		
 		if (!exp_motes.forall(motesAvail.contains(_))) {
-			log.error("Not all motes available. Have: {}; Need: {} ", motesAvail.mkString(", "), exp_motes.mkString(", "))
+			log.error("Not all motes available. Have: " + motesAvail.mkString(", ") + "; Need: "  + exp_motes.mkString(", ") + ";");
 			sys.exit(1)
 		}
 		
