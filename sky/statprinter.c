@@ -51,8 +51,9 @@ void handlestats(struct neighbor *n)
 	}
 }
 
+
 void pack_brssistats(struct brssi b){
 	b.brssi_avg = b.brssi_sum / b.counter;
 
-	printf("bRSSI: %i %i %i %lli %lu\n", b.brssi_min, b.brssi_avg, b.brssi_max, b.brssi_sum, b.counter);
+	printf("bRSSI: %i %i %" PRIi32 " %" PRIu16 " %i\n", b.brssi_min, b.brssi_max, b.brssi_sum, b.counter, b.brssi_avg);
 }

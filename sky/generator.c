@@ -312,7 +312,7 @@ PROCESS_THREAD(beacon_rssi_process, ev, data){
 			if(etimer_expired(&bet)){
 				etimer_set(&bet, (random_rand() % BRSSI_TIME_RANDOM + BRSSI_TIME_OFFSET) * CLOCK_SECOND / 1000);
 				CC2420_GET_STATUS(status);
-				if(!cc2420_receiving_packet()) { // indicates if we are sending _OR_ Receiving
+				if(!NETSTACK_CONF_RADIO.receiving_packet()) { // indicates if we are sending _OR_ Receiving
 					rssi = cc2420_rssi();
 					b.brssi_sum += rssi;
 					if (rssi > b.brssi_max) {

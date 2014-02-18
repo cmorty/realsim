@@ -30,7 +30,7 @@ struct brssi {
 	int8_t brssi_min;
 	int8_t brssi_max;
 	int8_t brssi_avg;
-#if (BEACONS_PERIODE * 1000 / BRSSI_TIME_OFFSET > 2^16 - 1)
+#if(BEACONS_PERIODE * 1000 / BRSSI_TIME_OFFSET) > 65535
 	#error "datatype of counter for bRSSI too small with this timings."
 #endif
 	int32_t brssi_sum;
