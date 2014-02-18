@@ -7,10 +7,8 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
 	<artifactId>Log2RealSim</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>Log2RealSim</name>
-
 	
 	<dependencies>
-
 		<dependency>
 			<groupId>com.github.scopt</groupId>
 			<artifactId>scopt_2.10</artifactId>
@@ -49,37 +47,77 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>Log2RealSim</mainClass>
+							<mainClass>de.fau.realsim.Log2RealSim</mainClass>
+							<addClasspath>true</addClasspath>
+							<classpathPrefix>lib/</classpathPrefix>
 						</manifest>
 					</archive>
 				</configuration>
 			</plugin>
 			<plugin>
-				<groupId>org.dstovall</groupId>
-				<artifactId>onejar-maven-plugin</artifactId>
-				<version>1.4.4</version>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>2.1</version>
 				<executions>
 					<execution>
+						<id>copy-dependencies</id>
+						<phase>package</phase>
 						<goals>
-							<goal>one-jar</goal>
+							<goal>copy-dependencies</goal>
 						</goals>
+						<configuration>
+							<outputDirectory>${project.build.directory}/lib</outputDirectory>
+							<overWriteReleases>false</overWriteReleases>
+							<overWriteSnapshots>false</overWriteSnapshots>
+							<overWriteIfNewer>true</overWriteIfNewer>
+						</configuration>
 					</execution>
 				</executions>
 			</plugin>
+			<plugin>
+				<groupId>com.github.wvengen</groupId>
+				<artifactId>proguard-maven-plugin</artifactId>
+				<version>2.0.7</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>proguard</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<proguardVersion>4.10</proguardVersion>
+					<obfuscate>false</obfuscate>
+					<includeDependencyInjar>true</includeDependencyInjar>
+					<injar>${project.build.finalName}.jar</injar>
+					<outjar>${project.build.finalName}-small.jar</outjar>
+					<outputDirectory>${project.build.directory}</outputDirectory>
+					<options>
+						<!-- see http://sourceforge.net/p/proguard/bugs/459/ -->
+						<option>-optimizations !code/allocation/variable</option>
+						<!-- <option>-dontoptimize</option> -->
+
+						<option>-keep public class de.fau.realsim.Log2RealSim{*;}</option>
+						<option>-keep class * implements java.util.Date</option>
+						<!-- Scala warnings must be ignored -->
+						<option>-dontwarn scala.**</option>
+					</options>
+					<libs>
+						<lib>${java.home}/lib/rt.jar</lib>
+						<lib>${java.home}/lib/jsse.jar</lib>
+					</libs>
+				</configuration>
+				<dependencies>
+					<dependency>
+						<groupId>net.sf.proguard</groupId>
+						<artifactId>proguard-base</artifactId>
+						<version>4.10</version>
+						<scope>runtime</scope>
+					</dependency>
+				</dependencies>
+			</plugin>
 		</plugins>		
 	</build>
-	<pluginRepositories>
-		<pluginRepository>
-			<id>onejar-maven-plugin.googlecode.com</id>
-			<url>
-			http://onejar-maven-plugin.googlecode.com/svn/mavenrepo</url>
-		</pluginRepository>
-	</pluginRepositories>
-	<repositories>
-		<repository>
-			<id>sonatype-public</id>
-			<url>https://oss.sonatype.org/content/groups/public</url>
-		</repository>
-	</repositories>
 </project>
 
