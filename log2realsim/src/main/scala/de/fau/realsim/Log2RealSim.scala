@@ -80,21 +80,46 @@ object Log2RealSim {
 				BEACONS_PER_PERIODE  -  n->recv_count,
 				n->dup_count);*/
 		
+		/*printf("bRSSI: %i %i %" PRIi32 " %" PRIu16 " %i\n", b.brssi_min, b.brssi_max, b.brssi_sum, b.counter, b.brssi_avg);*/
+		
+		//Check number of elements
 		if(el.length < 2 ) return
+		
+		//Test Date
+		d = dp.parse(el(0));
+
+		//Ignore unneeded
+		
+		if(d.before(fStartDate)) return;			
+		if(d.after(fEndDate)) return;
+		
+		if(startDate == 0) startDate = d.getTime
+		
+		endDate = d.getTime
+		val rsTime = d.getTime - startDate; 
 		
 		
 		def isT(suf:String*):Boolean = {
 			suf.exists(el(1).endsWith(_))
 		}
 		
+		if(isT("bRSSI:")) {
+			numb = try{
+				 el.tail.tail.map(java.lang.Integer.parseInt(_))
+			} catch {
+				case e:Throwable => 
+					println("Failed to pase " + l )
+					return
+			}
+			rsOut.println("%d;setbaserssi;%s;%i".format(rsTime, idToString(numb(0)), el(numb(1))))
+			cout += 1
+			return
+		}
+		
+		
+		//Edge-Stuff starts here
+
 		if(isT("R:", "RE:", "DIS:")){
-			d = dp.parse(el(0));
-	
-			//Ignore unneeded
-			
-			if(d.before(fStartDate)) return;			
-			if(d.after(fEndDate)) return;
-			
 			numb = try{
 				 el.tail.tail.map(java.lang.Integer.parseInt(_, 16))
 			} catch {
@@ -103,14 +128,6 @@ object Log2RealSim {
 					return
 			}
 		} else if(isT("RE2:", "DIS2:")){
-			d = dp.parse(el(0));
-	
-			//Ignore unneeded
-			
-			if(d.before(fStartDate)) return;			
-			if(d.after(fEndDate)) return;
-			
-			
 			numb = try{
 				 el.tail.tail.map(java.lang.Integer.parseInt(_))
 			} catch {
@@ -118,8 +135,8 @@ object Log2RealSim {
 					println("Failed to pase " + l )
 					return
 			}
-		} else return;
-		
+		} 
+		else return;
 		
 		
 		if(isT("R:")){			
@@ -156,10 +173,7 @@ object Log2RealSim {
 		} else return
 		
 		if(src == 0 ||dst == 0) return		
-		if(startDate == 0) startDate = d.getTime
-		
-		endDate = d.getTime
-		val rsTime = d.getTime - startDate; 
+
 		
 		//Check for dups by broken liner
 		dup.get(numb(0)) match{
@@ -214,7 +228,7 @@ object Log2RealSim {
 		var outfile:String = ""
 		
 		
-		val parser = new OptionParser("scopt") {
+		val parser = new OptionParser("Log2RealSim") {
 		  arg("<infile>", "<infile> input file", { v: String => infile = v })
 		  argOpt("[<outfile>]", "<outfile> output file (.rs and .r will be attached ) ", { v: String => outfile = v })
 		  opt("start", "When to start parsing in yyyy-MM-ddTHH:mm:ss",  {v: String => fStartDate = dp.parse(v)})
