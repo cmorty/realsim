@@ -25,7 +25,8 @@ object Log2RealSim {
 	//Output for realsim
 	var rsOut:PrintWriter = null
 	//Output for r
-	var rOut:PrintWriter = null
+	var connOut:PrintWriter = null
+	var rssiOut:PrintWriter = null
 	//Dates to filter
 	var fStartDate:Date = new Date(0)
 	var fEndDate:Date = new Date(Long.MaxValue)
@@ -111,7 +112,13 @@ object Log2RealSim {
 					println("Failed to pase " + l )
 					return
 			}
-			rsOut.println("%d;setbaserssi;%s;%i".format(rsTime, idToString(numb(0)), el(numb(1))))
+			val nd = idToString(numb(0))
+			val min = numb(1).toInt
+			val max = numb(2).toInt
+			val sum = numb(3).toInt
+			val ctr = numb(4).toInt
+			rsOut.println("%d;setbaserssi;%s;%i".format(rsTime, nd, (sum.toFloat/ctr).round.toInt))
+			rssiOut.println(List(dp.format(d), nd, min, max, sum, ctr).mkString(" "))
 			cout += 1
 			return
 		}
@@ -208,12 +215,12 @@ object Log2RealSim {
 					} 	
 				case None =>
 			}
-			rOut.println(List(dp.format(d), dst, src, rssi, lqi, rcv, loss).mkString(" "))
+			connOut.println(List(dp.format(d), dst, src, rssi, lqi, rcv, loss).mkString(" "))
 			rsOut.println("%d;setedge;%s;%s;%f;%d;%d".format(rsTime, idToString(src), idToString(dst), rcv.toFloat/(rcv + loss)  * 100, rssi, lqi))
 			cout += 1
 			last.put(ds, d.getTime )
 		} else if(List("DIS:", "DIS2:").exists(el(1).endsWith(_))){
-			rOut.println(List(dp.format(d), dst, src, "NA","NA","NA","NA").mkString(" "))
+			connOut.println(List(dp.format(d), dst, src, "NA","NA","NA","NA").mkString(" "))
 			rsOut.println("%d;rmedge;%s;%s".format(rsTime, idToString(src), idToString(dst)))
 			cout += 1
 		}
@@ -246,7 +253,10 @@ object Log2RealSim {
 		
 		val br = new BufferedReader(new FileReader(infile))
 		rsOut = new PrintWriter(new FileWriter(outfile + ".rs"))
-		rOut = new PrintWriter(new FileWriter(outfile + ".r"))
+		connOut = new PrintWriter(new FileWriter(outfile + ".conn.r"))
+		rssiOut = new PrintWriter(new FileWriter(outfile + ".rssi.r"))
+		connOut.println(List("time", "dst", "src", "rssi", "lqi", "rcv", "loss").mkString(" "))
+		rssiOut.println(List("time", "node", "min", "max", "sum", "count").mkString(" "))
 		
 		
 		val lIt = Iterator.continually(br.readLine()).takeWhile(_ != null)
@@ -259,7 +269,8 @@ object Log2RealSim {
 		}
 		
 		rsOut.close
-		rOut.close
+		connOut.close
+		rssiOut.close
 		
 		println("Input:        " + ctr)
 		println("Output:       " + cout)
