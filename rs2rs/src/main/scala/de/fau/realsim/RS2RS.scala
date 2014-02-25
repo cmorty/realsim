@@ -7,9 +7,29 @@ import java.io.FileWriter
 import scopt.OptionParser
 import scopt.OptionParser._
 import java.io.File
+import scala.collection.mutable.Buffer
+
+class event(val time:Int, val cmd:List[String]){
+	
+	def  overwrites(e:event):Boolean = {
+		if(e.time >= time) (cmd(0), e.cmd(0)) match {
+			case ("addnode" | "rmnode", "addnode" | "rmnode") =>  e.cmd(1) == cmd(1)
+			case ("setedge" | "rmedge", "setedge" | "rmedge") =>  e.cmd(1) == cmd(1) && e.cmd(2) == cmd(2) 
+			case ("baserssi", "baserssi") => e.cmd(1) == cmd(1)
+			case _ => false
+		} else {
+			false
+		}
+		
+	}
+}
+
 
 object RS2RS {
 
+	var backlog = List[event]()
+	
+	
 	def conv(in: File, out: File, start: Int, length: Int) {
 		val br = new BufferedReader(new FileReader(in))
 		val pw = new PrintWriter(new FileWriter(out))
@@ -19,10 +39,25 @@ object RS2RS {
 			val sp = l.split(";", 2)
 			val tm = sp(0).toInt - start
 			val cmd = sp(1)
-			if (tm > 0 && tm <= length) {
-				pw.println(tm.toString + "" + cmd);
+			if(tm < 2) { // 0 and 1 are reserved for initialisation
+				val ne = new event(tm, cmd.split(";").toList)
+				if(!backlog.exists(_.overwrites(ne))) {
+					backlog = backlog.filterNot(ne.overwrites(_))
+					backlog = ne :: backlog 
+				}
+				//println(backlog.map(x => (x.time.toString :: x.cmd).mkString(";")).mkString("\n"))
+			} else if (tm <= length) {
+				pw.println(tm.toString + ";" + cmd);
 			}
 		}
+		//Add start-events
+		println(backlog.map(x => (x.time.toString :: x.cmd).mkString(";")).mkString("\n"))
+		
+		pw.print(backlog.map(x => ({
+			if(x.cmd(0) == "addnode") "0" else "1"
+			} :: x.cmd).mkString(";")).mkString("\n"))
+		
+		
 		br.close
 		pw.close
 	}
