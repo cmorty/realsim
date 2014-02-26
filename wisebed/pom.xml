@@ -3,13 +3,13 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>de.fau.dryrun</groupId>
 	<artifactId>wisebed</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.1.0</version>
 	<name>Wisebed experiments</name>
 	<scm>
 		<developerConnection>scm:git:git@github.com:cmorty/realsim.git</developerConnection>
 		<url>https://github.com/cmorty/realsim</url>
 		<connection>scm:git:https://github.com/cmorty/realsim.git</connection>
-		<tag>HEAD</tag>
+		<tag>wisebed-0.1.0</tag>
 	</scm>
 	<dependencies>
 		<dependency>
@@ -76,7 +76,7 @@
 							<id>main</id>
 							<mainClass>
 								de.fau.realsim.wisebed.RealsimClient</mainClass>
-							<args></args>
+							<args />
 							<jvmArgs>
 								<jvmArg>-Xmx128m</jvmArg>
 								<jvmArg>-Djava.library.path=...</jvmArg>
@@ -86,7 +86,7 @@
 							<id>setNodeID</id>
 							<mainClass>
 								de.fau.realsim.wisebed.SetNodeID</mainClass>
-							<args></args>
+							<args />
 							<jvmArgs>
 								<jvmArg>-Xmx128m</jvmArg>
 								<jvmArg>-Djava.library.path=...</jvmArg>
