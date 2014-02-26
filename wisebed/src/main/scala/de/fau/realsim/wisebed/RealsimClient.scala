@@ -312,9 +312,17 @@ object RealsimClient {
 }
 
 class ExHandler extends Thread.UncaughtExceptionHandler {
+	import java.io.StringWriter
+	import java.io.PrintWriter
+	
 	def uncaughtException(t: Thread, e: Throwable) {
+		
+		val sw = new StringWriter();
+		val pw = new PrintWriter(sw);
+		e.printStackTrace(pw);
 		System.err.println("Throwable: " + e.getMessage());
 		System.err.println(t.toString());
+		System.err.println(sw.toString())
 		System.err.println("Terminating");
 		sys.exit(55)
 	}
