@@ -4,13 +4,10 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.GregorianCalendar
-
 import scala.collection.JavaConversions.mapAsScalaMap
 import scala.collection.mutable.Buffer
 import scala.xml.XML
-
 import org.slf4j.LoggerFactory
-
 import de.fau.wisebed.Experiment
 import de.fau.wisebed.Testbed
 import de.fau.wisebed.WisebedApiConversions.message2wmessage
@@ -20,6 +17,7 @@ import de.fau.wisebed.messages.MessageInput
 import de.fau.wisebed.messages.MessageLogger
 import de.fau.wisebed.messages.MsgLiner
 import de.fau.wisebed.wrappers.ChannelHandlerConfiguration
+import java.io.File
 
 object RealsimClient {
 	val log = LoggerFactory.getLogger(this.getClass)
@@ -31,11 +29,40 @@ object RealsimClient {
 
 		val handler = new ExHandler();
 	    Thread.setDefaultUncaughtExceptionHandler(handler);
-	    de.fau.wisebed.util.Logging.setDefaultLogger
+		de.fau.wisebed.util.Logging.setDefaultLogger
+		var setNodeId = false;
+		var conffile = "config.xml"
+		var setfile =  "settings.xml" 
 
+		val parser = new scopt.OptionParser[Unit]("Realsim Wisebed Client") {
+			note("By default the settings are loaded and executed")
+			opt[File]('c', "config")
+				.text("Set config. The default is: " + conffile)
+				.foreach{f => conffile = f.getPath}
+				.validate{f => if(f.exists) success else failure("File " + f.getPath + " not found.")}
+			
+			
+			opt[File]('s', "settings")
+				.text("Set settings. The default is: " + setfile)
+				.foreach{f => setfile = f.getPath}
+				.validate{f => if(f.exists) success else failure("File " + f.getPath + " not found.")}
+				
+			cmd("setNodeId")
+				.text("Set the node id to the wisebed id")
+				.foreach { _ => setNodeId = true }
+
+		}
+
+		if (!parser.parse(args)) {
+			sys.exit(1)
+		}
+		
+		if(setNodeId) {
+			SetNodeID.setNodeId(conffile, setfile)
+			sys.exit
+		}
+		
 		//Get Config
-
-		val conffile = { if (args.length > 1) args(1) else "config.xml" }
 
 		log.info("Loading Wisebed config: " + conffile)
 
@@ -48,7 +75,7 @@ object RealsimClient {
 		val password = (config \ "pass").text
 
 		//Get Settings
-		val setfile = { if (args.length > 0) args(0) else "settings.xml" }
+		
 		log.info("Loading experiment config: " + setfile)
 		val settings = XML.load(setfile)
 

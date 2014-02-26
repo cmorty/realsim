@@ -29,12 +29,11 @@ object SetNodeID {
 	val time = 30 * 60
 	
 	
-	def main(args: Array[String]) {
+	def setNodeId(conffile:String, setfile:String) {
 		setDefaultLogger
 
 		//Get Config
 
-		val conffile = { if (args.length > 1) args(1) else "config.xml" }
 
 		log.info("Loading Wisebed config: " + conffile)
 		
@@ -47,7 +46,6 @@ object SetNodeID {
 		val password = (config \ "pass").text
 
 		//Get Settings
-		val setfile = { if (args.length > 0) args(0) else "settings.xml" }
 		log.info("Loading experiment config: " + setfile)
 		val settings = XML.load(setfile)
 
