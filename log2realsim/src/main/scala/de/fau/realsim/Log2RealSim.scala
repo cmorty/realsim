@@ -16,7 +16,7 @@ import java.io.PrintWriter
 object Log2RealSim {
 
 	val last = HashMap[Tuple2[Int, Int], Long]()
-	val dup = HashMap[Int, Array[String]]()
+	val dup = HashMap[Int, List[String]]()
 	
 	val dp=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
 	var nacnt = 0
@@ -40,15 +40,28 @@ object Log2RealSim {
 
 	
 	def parseLine(l:String) {
-		val el = l.split(" ")
+		
 		var dst = 0 
 		var src = 0
 		var rssi =0
 		var lqi =0 
 		var rcv = 0
 		var loss = 0
-		var numb:Array[Int] = null
+		var numb:List[Int] = null
 		var d:Date = null
+		val el = {
+			val filter=List("bRSSI:", "R:", "RE:", "DIS:","RE2:", "DIS2:", "BC:")
+			val s = l.split(" ").toList
+			val cmd =filter.find(s(1).endsWith(_)) 
+			if(cmd.isDefined) {
+				val s2=s(1).splitAt(s(1).length - cmd.get.length)
+				s(0) :: s2._1.dropRight(1) :: s2._2 :: s.tail.tail
+			} else  {
+				s
+			}
+			
+		}
+		
 		
 		
 					/*
@@ -85,6 +98,8 @@ object Log2RealSim {
 		
 		//Check number of elements
 		if(el.length < 2 ) return
+		// Date, node, cmd
+		val data = el.tail.tail.tail
 		
 		//Test Date
 		d = dp.parse(el(0));
@@ -100,13 +115,14 @@ object Log2RealSim {
 		val rsTime = d.getTime - startDate; 
 		
 		
+		
 		def isT(suf:String*):Boolean = {
-			suf.exists(el(1).endsWith(_))
+			suf.exists(el(2) == _)
 		}
 		
 		if(isT("bRSSI:")) {
 			numb = try{
-				 el.tail.tail.map(java.lang.Integer.parseInt(_))
+				 data.map(java.lang.Integer.parseInt(_))
 			} catch {
 				case e:Throwable => 
 					println("Failed to pase " + l )
@@ -117,7 +133,7 @@ object Log2RealSim {
 			val max = numb(2).toInt
 			val sum = numb(3).toInt
 			val ctr = numb(4).toInt
-			rsOut.println("%d;setbaserssi;%s;%i".format(rsTime, nd, (sum.toFloat/ctr).round.toInt))
+			rsOut.println("%d;setbaserssi;%s;%d".format(rsTime, nd, (sum.toFloat/ctr).round.toInt))
 			rssiOut.println(List(dp.format(d), nd, min, max, sum, ctr).mkString(" "))
 			cout += 1
 			return
@@ -128,7 +144,7 @@ object Log2RealSim {
 
 		if(isT("R:", "RE:", "DIS:")){
 			numb = try{
-				 el.tail.tail.map(java.lang.Integer.parseInt(_, 16))
+				data.map(java.lang.Integer.parseInt(_, 16))
 			} catch {
 				case e:Throwable => 
 					println("Failed to pase " + l )
@@ -136,7 +152,7 @@ object Log2RealSim {
 			}
 		} else if(isT("RE2:", "DIS2:")){
 			numb = try{
-				 el.tail.tail.map(java.lang.Integer.parseInt(_))
+				data.map(java.lang.Integer.parseInt(_))
 			} catch {
 				case e:Throwable => 
 					println("Failed to pase " + l )
@@ -147,7 +163,7 @@ object Log2RealSim {
 		
 		
 		if(isT("R:")){			
-			if(el.length < 7) return
+			if(numb.length < 5) return
 			dst = numb(0)
 			src = numb(1)
 			rssi = numb(2);
@@ -155,7 +171,10 @@ object Log2RealSim {
 			rcv = numb(4);
 			loss = numb(5);
 		} else if(isT("RE:", "RE2:")){
-			if(el.length < 8) return
+			if(numb.length < 6) {
+				println("NB: " + numb.length)
+				return
+			}
 			dst = numb(0)
 			src = numb(1)
 			if(isT("RE:")) {
@@ -200,7 +219,7 @@ object Log2RealSim {
 		if(addnode.add(dst)){ rsOut.println("0;addnode;" + idToString(dst)); cout +=1}
 		
 		//output
-		if(List("R:", "RE:", "RE2:").exists(el(1).endsWith(_))){
+		if(isT("R:", "RE:", "RE2:")){
 			//Check for connection loss
 			val ds = Tuple2(numb(0), numb(1))
 			last.get(ds) match {
@@ -279,10 +298,7 @@ object Log2RealSim {
 		println("End:          " + dp.format(new Date(endDate)) )
 		println
 		
-		
-
-
-		
+	
 	}
 
 }
