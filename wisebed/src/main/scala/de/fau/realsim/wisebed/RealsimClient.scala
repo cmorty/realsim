@@ -84,7 +84,7 @@ object RealsimClient {
 				val out = new java.io.PrintWriter(dt)
 				var flush = (new Date).getTime
 				val logger = new MessageLogger(mi => {
-					out.println(df.format(new Date) + " " + mi.node + ":" + mi.dataString)
+					out.println(df.format(new Date) + " " + mi.node + " " + mi.dataString)
 					val now = (new Date).getTime
 					if (now - flush > 1000) { //Flush regularly
 						flush = now
