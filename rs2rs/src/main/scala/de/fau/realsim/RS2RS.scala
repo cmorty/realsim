@@ -71,8 +71,16 @@ object RS2RS {
 
 		val parser = new OptionParser[Unit]("RS2RS") {
 			head("RealSim2RealSim")
-			arg[File]("<infile>") text ("input file") foreach { infile = _ }
-			arg[File]("<outfile>") text ("output file") foreach { outfile = _ }
+			arg[File]("<infile>") 
+				.text ("input file") 
+				.foreach { infile = _ }
+				.validate { f => if(f.exists) success else failure("File " + f.getPath + "not found.")}
+			
+			arg[File]("<outfile>") 
+				.text ("output file") 
+				.foreach { outfile = _ }
+				.validate { f => if(f.exists) success else failure("File " + f.getPath + "not found.")}
+				
 			arg[Int]("<start offset>") text ("start offset") foreach { start = _ }
 			arg[Int]("<duration>") text ("Duration of the sample") foreach { length = _ }
 		}
