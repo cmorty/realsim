@@ -59,6 +59,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 	Cooja cooja;
 	JCheckBox loadFile = new JCheckBox("Load from File instead of Simulation");
 	JTextPane logOutput = new JTextPane();
+	JTextPaneAppender taa = new JTextPaneAppender(logOutput);
 	
 	ArrayList<SimEvent> events = new ArrayList<SimEvent>(); // Make sure there
 															// is an empty list.
@@ -68,16 +69,11 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		super("RealSim File", cooja, false);
 		sim = simulation;
 		this.cooja = cooja;
-	}
-	
-	public void startPlugin() {
-		
-		JTextPaneAppender taa = new JTextPaneAppender(logOutput);
-		
 		logger.addAppender(taa);
 		taa.setThreshold(Level.ALL);
-		System.out.println("TH: " + taa.getThreshold().toString());
+	}
 		
+	public void startPlugin() {
 		//Init components
 		default_node = new JComboBox<Object>(new MoteTypeComboboxModel(sim));
 		
