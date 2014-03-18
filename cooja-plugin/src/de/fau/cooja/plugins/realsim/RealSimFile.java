@@ -360,16 +360,18 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 			if(name.equals("Load")){
 				loadFile.setSelected(element.getText().toLowerCase().equals("true"));
 			}
-			//Load anyway....
+			//Load anyway.... - and overwrite later.... 
 			if (name.equals("SimEvent")) {
 				
 				
 				SimEvent se = null;
 				String intfClass = element.getText().trim();
 				
-				Class<? extends SimEvent> rseClass = sim.getCooja().tryLoadClass(this, SimEvent.class, intfClass);
+				//Backwards compatibility
+				intfClass = intfClass.replace("^se\\.sics\\.cooja.", "org.contikios.cooja.");
 				
-				//Class<?> rseClass = null;
+				
+				Class<? extends SimEvent> rseClass = sim.getCooja().tryLoadClass(this, SimEvent.class, intfClass);
 				
 				
 				if (rseClass == null) {
@@ -387,7 +389,6 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 							(long)Long.parseLong(element.getAttribute("time").getValue()), (Collection)element.getChildren() };
 					se = (SimEvent) constr.newInstance(para);
 				} catch (Exception e) {
-					// TODO Auto-generated catch block
 					logger.error("Something went wrong creating a new SimEvent: " + intfClass , e);
 				}
 				
@@ -397,15 +398,17 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		}
 		if(loadFile.isSelected()){
 			if(!parsefile(filename.getText())){
-				logger.info("As teh file " +filename.getText() + " could not be loaded, the" +
+				logger.info("As the file " +filename.getText() + " could not be loaded, the " +
 						"settings from the simulation are used.");
 			}
 		}
 		
 		sortEvents();
 		logger.info("RealSim loaded " + events.size() + " events");
+		//Remove in case it was added by parsefile
+		eventShed.remove();
 		sim.scheduleEvent(eventShed,sim.getSimulationTime());
-		logger.info("Registered Event for: " + sim.getSimulationTime() );
+		logger.debug("Registered Event for: " + sim.getSimulationTime() );
 		return true;
 	}
 	
