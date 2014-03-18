@@ -298,8 +298,8 @@ PROCESS_THREAD(beacon_rssi_process, ev, data){
 	PROCESS_BEGIN();
 
 		//init
-		b.brssi_max = -128;		// there should be values from arround -57 to 0 for min/max, otherwise there should be something wrong
-		b.brssi_min = 127;		// RSSI offset -> -45
+		b.brssi_max = INT8_MIN;		// there should be values from arround -57 to 0 for min/max, otherwise there should be something wrong
+		b.brssi_min = INT8_MAX;		// RSSI offset -> -45
 		b.brssi_sum = 0;
 		b.counter = 0;
 
@@ -330,8 +330,8 @@ PROCESS_THREAD(beacon_rssi_process, ev, data){
 
 			if(cur_beacontimerpos == 0 && last_beacontimerpos >= BEACONS_PER_PERIODE-1){
 				pack_brssistats(b);
-				b.brssi_max = -111;
-				b.brssi_min = 111;
+				b.brssi_max = INT8_MIN;
+				b.brssi_min = INT8_MAX;
 				b.brssi_sum = 0;
 				b.counter = 0;
 			}
