@@ -29,11 +29,9 @@ import log4j2JText.JTextPaneAppender;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.jdom.Attribute;
-import org.jdom.Element;
-
 import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.Cooja;
+import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteType;
 import org.contikios.cooja.PluginType;
 import org.contikios.cooja.Simulation;
@@ -41,6 +39,8 @@ import org.contikios.cooja.SupportedArguments;
 import org.contikios.cooja.TimeEvent;
 import org.contikios.cooja.VisPlugin;
 import org.contikios.cooja.radiomediums.DirectedGraphMedium;
+import org.jdom.Attribute;
+import org.jdom.Element;
 
 @ClassDescription("RealSim File")
 @PluginType(PluginType.SIM_PLUGIN)
@@ -175,8 +175,47 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		return id;
 	}
 	
-	private boolean parsefile(String filename) {
+	
+	
+	
+	MoteType getMoteType(int id, String def) {
+		
+		if(def != null && def.length() > 0) {
+			MoteType mt = sim.getMoteType(def);
+			if(mt == null) throw new RuntimeException("Mote type " + def + " not found. Using default method."); //There is something wrong, so break it
+			logger.info("Using preset mote type for node " + id  + ": " + mt.getIdentifier() + " / " + mt.getDescription());
+			return mt;
+		}
+		
+		Mote mote = sim.getMote(id);
+		if(mote != null) {
+			MoteType mt = mote.getType(); 
+			logger.info("Using type of existing node for node " + id  + ": " + mt.getIdentifier() + " / " + mt.getDescription());
+			return mt;
+		}
+		
+		if(default_node != null) {
+			MoteType mt = ((MoteTypeComboboxModel) default_node.getModel()).getSelectedMote();
+			logger.info("Using type of selected  mote type fore node " + id + ": " + mt.getIdentifier() + " / " + mt.getDescription());
+			return mt;
+		}
+		
+		
+		
+		MoteType[] mt = sim.getMoteTypes();
+		if(mt.length == 0) {
+			throw new RuntimeException("No mote types available");
+		}
+		
+		
+		return mt[0];
+		
+	}
+	
+	
+	boolean parsefile(String filename) {
 		events = new ArrayList<SimEvent>();
+		String defMoteType = null;
 		try {
 			BufferedReader sc = null;
 			String line;
@@ -196,12 +235,6 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 			}
 			logger.info("Reading " + filename);
 			
-			MoteTypeComboboxModel mtbm = (MoteTypeComboboxModel) default_node.getModel();
-			if(mtbm.getSelectedItem() == null){
-				logger.error("No default node selected.");
-				sc.close();
-				return false;
-			}
 			
 			while ( null != (line = sc.readLine())) {
 				ln++;
@@ -212,6 +245,15 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 				String exreason = null;
 				int exind = 0;
 				try {
+					if(t[0].toLowerCase().equals("motetype")) {
+						if(t.length > 1) {
+							defMoteType = t[1];
+						} else {
+							defMoteType = null;
+						}
+						continue;
+					}
+					
 					
 					exind = 1; exreason = "Time";
 					long time = new Long(t[0]);
@@ -219,7 +261,12 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 					
 					if (t[1].equals("addnode")) {						
 						exind = 2; exreason = "addnode";
-						SimEvent se = new SimEventAddNode(time, strToId(t[2]), mtbm.getSelectedMote());
+						int id = strToId(t[2]);
+						String pMoteType = defMoteType;
+						if(t.length > 2) {
+							pMoteType = t[2];
+						}
+						SimEvent se = new SimEventAddNode(time, id, getMoteType(id, pMoteType));
 						events.add(se);
 					}
 
@@ -272,6 +319,8 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 			sc.close();
 			
 		} catch (Exception e) {
+			logger.warn("Unexpected Exception: " + e.toString() );
+			e.printStackTrace();
 			return false;
 		}
 		sortEvents();
