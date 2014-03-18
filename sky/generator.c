@@ -69,6 +69,7 @@ LIST(neighbors_list);
 
 
 PROCESS(beacon_process, "Beacon process");
+PROCESS(beacon_rssi_process, "rssi process");
 
 #define SUNIT 64
 
@@ -289,6 +290,56 @@ PROCESS_THREAD(beacon_process, ev, data){
 	PROCESS_END();
 }
 
+PROCESS_THREAD(beacon_rssi_process, ev, data){
+	static struct etimer bet;
+	static struct brssi b;
+
+
+	PROCESS_BEGIN();
+
+		//init
+		b.brssi_max = -128;		// there should be values from arround -57 to 0 for min/max, otherwise there should be something wrong
+		b.brssi_min = 127;		// RSSI offset -> -45
+		b.brssi_sum = 0;
+		b.counter = 0;
+
+		static uint8_t last_beacontimerpos = 0;
+		etimer_set(&bet, 2);
+		while(1) {
+			int8_t rssi = 0;
+			uint8_t status;
+			PROCESS_YIELD();
+			if(etimer_expired(&bet)){
+				etimer_set(&bet, (random_rand() % BRSSI_TIME_RANDOM + BRSSI_TIME_OFFSET) * CLOCK_SECOND / 1000);
+				CC2420_GET_STATUS(status);
+				if(!NETSTACK_CONF_RADIO.receiving_packet()) { // indicates if we are sending _OR_ Receiving
+					rssi = cc2420_rssi();
+					b.brssi_sum += rssi;
+					if (rssi > b.brssi_max) {
+						b.brssi_max = rssi;
+					} else if (rssi < b.brssi_min) {
+						b.brssi_min = rssi;
+					}
+					b.counter++;
+					if(b.counter > 650000){printf("ERROR\n");}
+					if(b.brssi_sum >  2147483646|| b.brssi_sum < -2147483646) {printf("BUG\n");}
+				}
+			}
+			// -> Statpacker
+			uint8_t cur_beacontimerpos = beacontimerpos;
+
+			if(cur_beacontimerpos == 0 && last_beacontimerpos >= BEACONS_PER_PERIODE-1){
+				pack_brssistats(b);
+				b.brssi_max = -111;
+				b.brssi_min = 111;
+				b.brssi_sum = 0;
+				b.counter = 0;
+			}
+			last_beacontimerpos = cur_beacontimerpos;
+
+		}
+	PROCESS_END();
+}
 
 static void
 broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from)

@@ -56,5 +56,6 @@ struct sink_msg * stat_getnext(void);
 void stat_flush(void);
 void stat_free(uint16_t id);
 void stat_print(struct sink_msg * sm);
+void pack_brssistats(struct brssi);
 
 #endif

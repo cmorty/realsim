@@ -6,9 +6,7 @@
 #include "net/rime.h"
 #include "uart1.h"
 
-AUTOSTART_PROCESSES(&beacon_process);
-
-
+AUTOSTART_PROCESSES(&beacon_process, &beacon_rssi_process);
 
 
 void handlestats(struct neighbor *n)
@@ -51,4 +49,11 @@ void handlestats(struct neighbor *n)
 							*(uint16_t*)&(rimeaddr_node_addr),
 							*(uint16_t*)&(n->addr));
 	}
+}
+
+
+void pack_brssistats(struct brssi b){
+	b.brssi_avg = b.brssi_sum / b.counter;
+
+	printf("bRSSI: %i %i %" PRIi32 " %" PRIu16 " %i\n", b.brssi_min, b.brssi_max, b.brssi_sum, b.counter, b.brssi_avg);
 }

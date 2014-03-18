@@ -7,6 +7,8 @@
 #define BEACON_PAUSE_MIN 2
 #define BEACONS_PER_PERIODE 8
 #define BEACONS_PERIODE 80
+#define BRSSI_TIME_OFFSET 250	// offset in ms
+#define BRSSI_TIME_RANDOM 100	// offset + random ms
 
 /* Struct for neighbor info */
 struct neighbor {
@@ -24,9 +26,19 @@ struct neighbor {
 	};
 };
 
+struct brssi {
+	int8_t brssi_min;
+	int8_t brssi_max;
+	int8_t brssi_avg;
+#if(BEACONS_PERIODE * 1000 / BRSSI_TIME_OFFSET) > 65535
+	#error "datatype of counter for bRSSI too small with this timings."
+#endif
+	int32_t brssi_sum;
+	uint16_t counter;
+};
 
 PROCESS_NAME(beacon_process);
-
+PROCESS_NAME(beacon_rssi_process);
 
 
 #endif
