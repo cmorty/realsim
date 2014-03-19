@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Vector;
 
 import javax.swing.GroupLayout;
@@ -60,6 +62,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 	JCheckBox loadFile = new JCheckBox("Load from File instead of Simulation");
 	JTextPane logOutput = new JTextPane();
 	JTextPaneAppender taa = new JTextPaneAppender(logOutput);
+
 	
 	ArrayList<SimEvent> events = new ArrayList<SimEvent>(); // Make sure there
 															// is an empty list.
@@ -178,7 +181,15 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 	
 	
 	
-	MoteType getMoteType(int id, String def) {
+	MoteType getMoteType(int id, String def, Map<Integer, String> lookup) {
+		
+		if(lookup != null && lookup.containsKey(id)) {
+			MoteType mt = sim.getMoteType(lookup.get(id));
+			if(mt == null) throw new RuntimeException("Mote type " + def + " not found. Using default method."); //There is something wrong, so break it
+			logger.info("Using preset mote type for node " + id  + ": " + mt.getIdentifier() + " / " + mt.getDescription());
+			return mt;
+		}
+		
 		
 		if(def != null && def.length() > 0) {
 			MoteType mt = sim.getMoteType(def);
@@ -216,6 +227,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 	boolean parsefile(String filename) {
 		events = new ArrayList<SimEvent>();
 		String defMoteType = null;
+		Map<Integer, String> moteMap= new HashMap<Integer, String>();  
 		try {
 			BufferedReader sc = null;
 			String line;
@@ -246,9 +258,13 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 				int exind = 0;
 				try {
 					if(t[0].toLowerCase().equals("motetype")) {
-						if(t.length > 1) {
+						if(t.length == 2) {
 							defMoteType = t[1];
-						} else {
+						} else if(t.length > 2) {
+							for(int i = 2; i < t.length; i++) {
+								moteMap.put(strToId(t[i]), t[1]);
+							}
+						} else	{
 							defMoteType = null;
 						}
 						continue;
@@ -266,7 +282,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 						if(t.length > 2) {
 							pMoteType = t[2];
 						}
-						SimEvent se = new SimEventAddNode(time, id, getMoteType(id, pMoteType));
+						SimEvent se = new SimEventAddNode(time, id, getMoteType(id, pMoteType, moteMap));
 						events.add(se);
 					}
 

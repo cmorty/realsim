@@ -21,8 +21,24 @@ A RealSim File has the following format:
 * *setedge*;`srcID`;`dstID`;`PRR`;`RSSI`;`LQI` Set PRR, RSSI and LQI for the connction from srcID to dstID
 * *rmedge*:`srcID`;`dstID` Remove the edge from srcID to dstID
 
-Exception:
-Whe using `nodetype` instead of `Time in ms` the default node type is set for all subsequent addnodes.
+
+### MoteSelection in RealSimFile
+By default th node type chosen in the dropdown menu is used.
+
+The special command `nodetype` has no timestamp, but applies to the rest of the file.
+
+* `nodetype` without parameter resets the default node to dropdown of the RealSim-GUI
+* `nodetype;<name of nodetype>` will choose that node type for all following `addnode` commands
+* `nodetype;<name of nodetype>;<id>;<id2>;...` will set that node type for a specific node. 
+	This overrides the default node configuration.
+
+For example
+```
+nodetype;client
+nodetype;server;1
+```
+will set all nodes to the nodetype client and node 1 to server.
 
 
-When importing a RealSim file all nodes have the same node type. To change that the simulation must be saved in a file. It is then possible to adjust the node type.
+
+
