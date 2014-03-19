@@ -62,6 +62,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 	JCheckBox loadFile = new JCheckBox("Load from File instead of Simulation");
 	JTextPane logOutput = new JTextPane();
 	JTextPaneAppender taa = new JTextPaneAppender(logOutput);
+	JButton clear = new JButton("Clear Log");
 
 	
 	ArrayList<SimEvent> events = new ArrayList<SimEvent>(); // Make sure there
@@ -79,11 +80,14 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 	public void startPlugin() {
 		//Init components
 		default_node = new JComboBox<Object>(new MoteTypeComboboxModel(sim));
+		JScrollPane logScrollPane =  new JScrollPane(logOutput);
+		
 		
 		filename.addActionListener(this);
 		select_file.addActionListener(this);
 		load.addActionListener(this);
 		loadFile.addActionListener(this);
+		clear.addActionListener(this);
 		DefaultCaret caret = (DefaultCaret)logOutput.getCaret();
 		caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
 		
@@ -94,6 +98,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		controlPanel.setLayout(layout);
 		layout.setAutoCreateGaps(true);
 		layout.setAutoCreateContainerGaps(true);
+		
 		
 		
 		
@@ -109,9 +114,12 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		    )
 		    .addComponent(default_node,  GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
 		            GroupLayout.PREFERRED_SIZE)
-		    .addComponent(loadFile,  GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
-				            GroupLayout.PREFERRED_SIZE)
-			.addComponent(logOutput)
+		    .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+		    	.addComponent(loadFile)
+		    	.addComponent(clear)
+		    )        
+		    
+			.addComponent(logScrollPane)
 		);
 		
 		layout.setHorizontalGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
@@ -121,8 +129,11 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 					.addComponent(load)	
 				)
 				.addComponent(default_node)
-				.addComponent(loadFile)
-				.addComponent(logOutput)
+				.addGroup(layout.createSequentialGroup()
+						.addComponent(loadFile)
+						.addComponent(clear)
+				)
+				.addComponent(logScrollPane)
 		);
 		
 		
@@ -144,7 +155,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		   layout.setVerticalGroup(vGroup);
 	*/	
 		
-		add("Center",  new JScrollPane(controlPanel));
+		add(controlPanel);
 		
 		rs = new RealSim(sim, cooja);
 		SimEvent.setRs(rs);
@@ -167,6 +178,9 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		}
 		if (src == load) {
 			parsefile(filename.getText());
+		}
+		if (src == clear) {
+			logOutput.setText(""); 
 		}
 		
 	}
