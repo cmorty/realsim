@@ -6,6 +6,9 @@ import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -342,8 +345,15 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 					}
 					
 				} catch (Exception e) {
+					if(exreason != null) {
 					// Continue with next line
 					logger.warn("Could not pase " + exreason + " in line "+ ln + ". (\"" + t[exind] + "\"). - Ignoring");
+					} else {
+						StringWriter sw = new StringWriter();
+						PrintWriter pw = new PrintWriter(sw);
+						e.printStackTrace(pw);
+						logger.error(sw.toString());
+					}
 				}
 			}
 			sc.close();
