@@ -546,6 +546,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		
 		public SimEventAddNode(long time, int id, MoteType mt) {
 			super(time);
+			if(mt == null) throw new InvalidParameterException("MoteTpye is null");
 			this.id = id;
 			this.mt = mt;
 		}
