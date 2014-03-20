@@ -162,6 +162,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		
 		add(controlPanel);
 		
+
 		
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setSize(180, 190);
@@ -196,22 +197,34 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 	}
 	
 	
+	private MoteType getMoteType(String desc) {
+		for(MoteType mtl : sim.getMoteTypes()) {
+			if(mtl.getDescription().equals(desc)) return mtl;
+		}
+		for(MoteType mtl : sim.getMoteTypes()) {
+			if(mtl.getIdentifier().equals(desc)) return mtl;
+		}
+		return null;
+	}
+	
 	
 	
 	MoteType getMoteType(int id, String def, Map<Integer, String> lookup) {
 		
 		if(lookup != null && lookup.containsKey(id)) {
-			MoteType mt = sim.getMoteType(lookup.get(id));
-			if(mt == null) throw new RuntimeException("Mote type " + def + " not found. Using default method."); //There is something wrong, so break it
-			logger.info("Using preset mote type for node " + id  + ": " + mt.getIdentifier() + " / " + mt.getDescription());
+			MoteType mt = getMoteType(lookup.get(id));
+			if(mt == null) throw new RuntimeException("Mote type " + lookup.get(id) + " not found."); //There is something wrong, so break it
+			logger.info("Using node pinned mote type " + id  + ": " + mt.getIdentifier() + " / " + mt.getDescription());
 			return mt;
 		}
 		
 		
 		if(def != null && def.length() > 0) {
-			MoteType mt = sim.getMoteType(def);
-			if(mt == null) throw new RuntimeException("Mote type " + def + " not found. Using default method."); //There is something wrong, so break it
-			logger.info("Using preset mote type for node " + id  + ": " + mt.getIdentifier() + " / " + mt.getDescription());
+			MoteType mt = getMoteType(def);
+			if(mt == null) {
+				throw new RuntimeException("Mote type " + def + " not found."); //There is something wrong, so break it
+			}
+			logger.info("Using defualt mote type " + id  + ": " + mt.getIdentifier() + " / " + mt.getDescription());
 			return mt;
 		}
 		
@@ -277,9 +290,11 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 					if(t[0].toLowerCase().equals("motetype")) {
 						if(t.length == 2) {
 							defMoteType = t[1];
+							logger.info("Setting default mote type to: " + defMoteType);
 						} else if(t.length > 2) {
 							for(int i = 2; i < t.length; i++) {
 								moteMap.put(strToId(t[i]), t[1]);
+								logger.info("Setting default mote type for " + t[i]  + " to: " +  t[1]);
 							}
 						} else	{
 							defMoteType = null;
@@ -296,9 +311,10 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 						exind = 2; exreason = "addnode";
 						int id = strToId(t[2]);
 						String pMoteType = defMoteType;
-						if(t.length > 2) {
-							pMoteType = t[2];
+						if(t.length > 3) {
+							pMoteType = t[3];
 						}
+						exreason=null;
 						SimEvent se = new SimEventAddNode(time, id, getMoteType(id, pMoteType, moteMap));
 						events.add(se);
 					}
@@ -347,7 +363,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 				} catch (Exception e) {
 					if(exreason != null) {
 					// Continue with next line
-					logger.warn("Could not pase " + exreason + " in line "+ ln + ". (\"" + t[exind] + "\"). - Ignoring");
+						logger.warn("Could not pase " + exreason + " in line "+ ln + ". (\"" + t[exind] + "\"). - Ignoring");
 					} else {
 						StringWriter sw = new StringWriter();
 						PrintWriter pw = new PrintWriter(sw);
@@ -370,6 +386,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 			for(SimEvent e : events) {
 				if(e.time != 0) break;
 				e.action();
+				
 			}
 		}
 		//Register event
@@ -549,6 +566,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 			if(mt == null) throw new InvalidParameterException("MoteTpye is null");
 			this.id = id;
 			this.mt = mt;
+			
 		}
 		
 		public SimEventAddNode(long time, Collection<Element> configXML) {
