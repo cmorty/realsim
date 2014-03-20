@@ -78,6 +78,8 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		this.cooja = cooja;
 		logger.addAppender(taa);
 		taa.setThreshold(Level.ALL);
+		rs = new RealSim(sim, cooja);
+		SimEvent.setRs(rs);
 	}
 		
 	public void startPlugin() {
@@ -160,8 +162,6 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 		
 		add(controlPanel);
 		
-		rs = new RealSim(sim, cooja);
-		SimEvent.setRs(rs);
 		
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setSize(180, 190);
