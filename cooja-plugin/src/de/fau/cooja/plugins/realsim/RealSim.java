@@ -57,7 +57,7 @@ public class RealSim implements Observer  {
 	public boolean addmote(Integer id, MoteType mt){
 		
 		if (moteExists(id)) {
-			logger.info("Mote " + id + "already exists.");
+			logger.info("Mote " + id + " already exists.");
 			return false;
 		}
 		logger.info("Adding mote: " + id);
