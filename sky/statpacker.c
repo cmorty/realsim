@@ -1,7 +1,7 @@
 #include "lib/memb.h"
 #include "stddef.h"
 #include <stdio.h>
-#include "net/rime.h"
+#include "net/rime/rime.h"
 #include "lib/list.h"
 #include "sys/energest.h"
 #include <string.h>
@@ -26,7 +26,7 @@ void stat_print(struct sink_msg * sm){
 	//MSP430 Make data is aligned
 	char * pos;
 	char * end;
-	rimeaddr_t * rad;
+	linkaddr_t * rad;
 	struct sink_msg lsm;
 	if((uintptr_t)sm % 2){
 		CPY(lsm, *sm);
@@ -35,13 +35,13 @@ void stat_print(struct sink_msg * sm){
 	pos = (void *)sm;
 	end = pos + sm->size;
 
-	printf("DAT: %i %i %i %li %i\n",clock_seconds(),  *(uint16_t*)&(sm->own_addr), sm->seqno, sm->time, sm->interval);
+	printf("DAT: %li %i %i %li %i\n",clock_seconds(),  *(uint16_t*)&(sm->own_addr), sm->seqno, sm->time, sm->interval);
 	pos = sm->d;
 
 	while(1){
 		rad = (void * )pos;
 		if(pos > end) break;
-		if(rimeaddr_cmp(&(sm->own_addr), rad)){
+		if(linkaddr_cmp(&(sm->own_addr), rad)){
 			//Energy
 			struct energystats * es = (void *) pos;
 			printf("E: %i %li %li %li %li %li\n", *(uint16_t*)&(sm->own_addr),  es->time, es->cpu, es->lpm, es->listen, es->transmit);
@@ -123,7 +123,7 @@ static void * reserve(uint16_t size){
 		sm->seqno = seqno++;
 		sm->time = clock_seconds();
 		sm->stime = 0;
-		rimeaddr_copy(&(sm->own_addr), &rimeaddr_node_addr);
+		linkaddr_copy(&(sm->own_addr), &linkaddr_node_addr);
 		sm->size = hdrsize;
 	}
 
@@ -135,14 +135,14 @@ static void * reserve(uint16_t size){
 void pack_energystats(void){
 	struct energystats * es = reserve(sizeof(struct energystats));
 	if(es == NULL) return;
-	rimeaddr_copy(&(es->addr), &rimeaddr_node_addr);
+	linkaddr_copy(&(es->addr), &linkaddr_node_addr);
 	CPYV(es->cpu, energest_type_time(ENERGEST_TYPE_CPU));
 	CPYV(es->lpm, energest_type_time(ENERGEST_TYPE_LPM));
 	CPYV(es->transmit, energest_type_time(ENERGEST_TYPE_TRANSMIT));
 	CPYV(es->listen, energest_type_time(ENERGEST_TYPE_LISTEN));
 	CPYV(es->time , clock_seconds());
 	printf("Pushing energy\n");
-	printf("EDE: %x %lx %lx %lx %lx %lx\n", *(uint16_t*)&(rimeaddr_node_addr),  es->time, es->cpu, es->lpm, es->listen, es->transmit);
+	printf("EDE: %x %lx %lx %lx %lx %lx\n", *(uint16_t*)&(linkaddr_node_addr),  es->time, es->cpu, es->lpm, es->listen, es->transmit);
 }
 
 

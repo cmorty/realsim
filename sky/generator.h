@@ -3,7 +3,7 @@
 #define GENERATOR_H
 
 #include <stdint.h>
-#include "net/rime.h"
+#include "net/rime/rime.h"
 #define BEACON_PAUSE_MIN 2
 #define BEACONS_PER_PERIODE 8
 #define BEACONS_PERIODE 80
@@ -15,7 +15,7 @@ struct neighbor {
 	struct neighbor *next;
 	unsigned long last_seen;
 	unsigned long last_sent;
-	rimeaddr_t addr;
+	linkaddr_t addr;
 	uint16_t last_seqno;
 	uint8_t recv_count;
 	uint8_t dup_count;

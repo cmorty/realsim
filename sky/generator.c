@@ -1,5 +1,5 @@
 #include "contiki.h"
-#include "net/rime.h"
+#include "net/rime/rime.h"
 #include "lib/memb.h"
 #include "sys/clock.h"
 #include "lib/random.h"
@@ -12,9 +12,9 @@
 #include "generator.h"
 #include "handlestats.h"
 
-#include "dev/ds2411.h"
+#include "dev/ds2411/ds2411.h"
 
-#include "dev/cc2420.h"
+#include "dev/cc2420/cc2420.h"
 
 /**
  * See Datasheet or CC2420.java
@@ -22,6 +22,9 @@
  */
 #define RSSI_OFFSET (-45)
 
+#ifndef WISEBED
+#define WISEBED 1
+#endif
 
 
 #if BEACON_PAUSE_MIN * 2 * BEACONS_PER_PERIODE > BEACONS_PERIODE
@@ -37,7 +40,7 @@ static uint8_t beacontimerpos = BEACONS_PER_PERIODE;
 
 //Ringbuf
 struct idata{
-	rimeaddr_t src;
+	linkaddr_t src;
 	int8_t lqi;
 	int8_t rssi;
 	uint16_t seqno;
@@ -55,7 +58,7 @@ static struct broadcast_conn broadcast;
 /* Struct for broadcast messages*/
 struct broadcast_message {
 	uint16_t seqno;
-	rimeaddr_t own_addr;
+	linkaddr_t own_addr;
 } ;
 
 
@@ -140,7 +143,7 @@ static int handlepackets(void){
 
 		/* check if we already know this neighbor. */
 		for(n = list_head(neighbors_list); n != NULL; n = list_item_next(n)) {
-			if(rimeaddr_cmp(&n->addr, &idatabuf[id].src)) {
+			if(linkaddr_cmp(&n->addr, &idatabuf[id].src)) {
 				break;
 			}
 		}
@@ -160,7 +163,7 @@ static int handlepackets(void){
 			memset(n, 0, sizeof(*n));
 
 			/* Initialize the fields. */
-			rimeaddr_copy(&n->addr, &idatabuf[id].src);
+			linkaddr_copy(&n->addr, &idatabuf[id].src);
 			n->last_seqno = -1;
 
 			/* Place the neighbor on the neighbor list. */
@@ -176,9 +179,14 @@ static int handlepackets(void){
 		n->rssi += idatabuf[id].rssi;
 		n->lqi += idatabuf[id].lqi;
 		n->last_seen = clock_seconds();
-
-		//printf("RSSIL: %x  %i %i \n", *(uint16_t*)&(n->addr.u8),  n->rssi,  idatabuf[id].rssi);
-
+#if WISEBED
+		printf("PACRC: %i %i %i %i %i\n",
+				*(uint16_t*)&(linkaddr_node_addr),
+				*(uint16_t*)&(idatabuf[id].src),
+				idatabuf[id].seqno,
+				idatabuf[id].rssi,
+				idatabuf[id].lqi);
+#endif
 		/* Logic */
 		if(n->last_seqno == idatabuf[id].seqno){
 			n->dup_count++;
@@ -207,7 +215,7 @@ static int handlepackets(void){
 
 
 
-static void broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from);
+static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from);
 
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
 process_event_t rcv_event;
@@ -228,7 +236,7 @@ PROCESS_THREAD(beacon_process, ev, data){
 		  printf("Setting CCA to: %d\n", CCA_THRESH);
 		  cc2420_set_cca_threshold(CCA_THRESH);
 		#endif //CCA_THRESH
-		random_init(*(long *)ds2411_id + *(long * )&rimeaddr_node_addr);
+		random_init(*(long *)ds2411_id + *(long * )&linkaddr_node_addr);
 		ringbuf_init(&inbuf, inbufdata, sizeof(inbufdata));
 		if(!rcv_event) rcv_event = process_alloc_event();
 		etimer_set(&et, (random_rand() % BEACONS_PERIODE_U) * CLOCK_SECOND / SUNIT);
@@ -267,7 +275,7 @@ PROCESS_THREAD(beacon_process, ev, data){
 			}
 			//Beaconning!
 			if(etimer_expired(&et)){
-				etimer_reset_set(&et, beacontimer[beacontimerpos] * CLOCK_SECOND / SUNIT);
+				etimer_reset_with_new_interval(&et, beacontimer[beacontimerpos] * CLOCK_SECOND / SUNIT);
 
 				beacontimerpos++;
 
@@ -307,11 +315,11 @@ PROCESS_THREAD(beacon_rssi_process, ev, data){
 		etimer_set(&bet, 2);
 		while(1) {
 			int8_t rssi = 0;
-			uint8_t status;
+			//uint8_t status = 0;
 			PROCESS_YIELD();
 			if(etimer_expired(&bet)){
 				etimer_set(&bet, (random_rand() % BRSSI_TIME_RANDOM + BRSSI_TIME_OFFSET) * CLOCK_SECOND / 1000);
-				CC2420_GET_STATUS(status);
+				//CC2420_GET_STATUS(status);
 				if(!NETSTACK_CONF_RADIO.receiving_packet()) { // indicates if we are sending _OR_ Receiving
 					rssi = cc2420_rssi();
 					b.brssi_sum += rssi;
@@ -342,7 +350,7 @@ PROCESS_THREAD(beacon_rssi_process, ev, data){
 }
 
 static void
-broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from)
+broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
 
 	struct broadcast_message *bm;
@@ -362,7 +370,7 @@ broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from)
 
 		bm = packetbuf_dataptr();
 		memcpy(&m, bm, sizeof(m));
-		rimeaddr_copy(&(idatabuf[i].src), from);
+		linkaddr_copy(&(idatabuf[i].src), from);
 		idatabuf[i].seqno = m.seqno;
 		idatabuf[i].lqi = (packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
 		idatabuf[i].rssi = (int8_t)(packetbuf_attr(PACKETBUF_ATTR_RSSI));

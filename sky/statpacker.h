@@ -16,7 +16,7 @@ struct scan_stats{
 extern struct scan_stats scan_stats;
 /* Struct for neighbor info */
 struct neighbor_sink {
-	rimeaddr_t addr;
+	linkaddr_t addr;
 	uint8_t recv_count;
 	uint8_t loose_count;
 	uint8_t dup_count;
@@ -32,7 +32,7 @@ __attribute__ ((packed)) struct sink_msg{
 	// The actual packet starts here.
 	union{
 		char pstart;
-		rimeaddr_t own_addr;
+		linkaddr_t own_addr;
 	};
 	uint16_t interval;
 	uint16_t seqno;
@@ -41,7 +41,7 @@ __attribute__ ((packed)) struct sink_msg{
 } ;
 
 struct energystats {
-	rimeaddr_t addr;
+	linkaddr_t addr;
 	unsigned long cpu;
 	unsigned long lpm;
 	unsigned long transmit;
