@@ -182,7 +182,8 @@ PROCESS_THREAD(scanner_process, ev, data)
 
   PROCESS_BEGIN();
   	  lpm_off();
-	  ringbuf_init(&rbuf, buf, RSSI_BUFSIZE);
+   	  RINGBUF_INIT(&rbuf, buf);
+     //ringbuf_init(&rbuf, buf, RSSI_BUFSIZE);
 	  /* switch mac layer off, and turn radio on */
 	  NETSTACK_MAC.off(0);
 	  cc2420_on();
