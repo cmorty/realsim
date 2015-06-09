@@ -105,7 +105,7 @@ now(void)
 #define MINSLACK 2
 
 #define SHORTRANGE 10
-
+#define BITRANGE 10
 
 
 static uint16_t buf[RSSI_BUFSIZE];
@@ -119,25 +119,49 @@ static uint8_t print(uint16_t prn, char * buf) {
 	int16_t v = prn & 0xFF;
 	int16_t c = prn >> 8;
 
-	int8_t diff = lastp - v;
+	int8_t diff = v - lastp;
 	uint8_t full = 1;
 
 
 
 	char off = 0;
-	if(c - 1 < SHORTRANGE  && lastp != v ){ //Fast encoding
+	if(diff != 0){
+		// +-1 first
 		off = 'A';
-		if(diff == -2) {off += SHORTRANGE * 0; full = 0;}
-		if(diff == -1) {off += SHORTRANGE * 1; full = 0;}
-		if(diff == 1)  {off += SHORTRANGE * 2; full = 0;}
-		if(diff == 2)  {off += SHORTRANGE * 3; full = 0;}
+
+		//Negativ diff
+		if(c == 1 && diff < 0 && diff > -(BITRANGE + 1)){
+			off += -diff - 1;
+			full = 0;
+		}
+
+		//Postitive diff
+		if(c == 1 && diff > 0 && diff <  (BITRANGE + 1)){
+			off += BITRANGE;
+			off += diff - 1;
+			full = 0;
+		}
+
+		//One-Offset neg
+		if(diff == -1 && c != 1 && c < SHORTRANGE + 2){
+			off += 2 * BITRANGE;
+			off += c - 2;
+			full = 0;
+		}
+
+		//One-Offset pst
+		if(diff == +1 && c != 1 && c < SHORTRANGE + 1){
+			off += 2 * BITRANGE + SHORTRANGE;
+			off += c - 2;
+			full = 0;
+		}
+
 
 	}
-
 	lastp = v;
 
 	if(!full){
-		buf[3] = off + c - 1;
+		buf[3] = off;
 		return 3;
 	}
 
@@ -200,6 +224,7 @@ PROCESS_THREAD(scanner_process, ev, data) {
 
 	uint8_t last = 0xFF;
 	uint8_t ctr = 0;
+	int16_t samples = 0;
 	rtimer_clock_t nextt;
 	uint8_t changed = 0; //Helper - should be removed by the compiler
 	char txbuf[4];
@@ -215,23 +240,26 @@ PROCESS_THREAD(scanner_process, ev, data) {
 	while (1) {
 		//Next period.
 		nextt += Period;
+		samples ++;
 		if(RTIMER_CLOCK_LT(nextt, now() + 1)) {
 			v = 0;
 		} else {
 			while (RTIMER_CLOCK_LT(now(), nextt)){ // Wait for next. - slack time
 				if(txstate > -1){
 					if(IFG2 & UTXIFG1){
-						if(symbc == 20){
-							TXBUF1 = '\n';
-							symbc = 0;
-						} else {
-							TXBUF1 = txbuf[txstate];
-							txstate ++;
-							if(txstate == 4) txstate = -1;
-						}
+						TXBUF1 = txbuf[txstate];
+						txstate ++;
+						if(txstate == 4) txstate = -1;
 						watchdog_periodic();
 					}
-				} else  if(read != write){
+				} else if(symbc == 40){
+					txbuf[0] = ((samples & 0x1F00)  >> 8) + '0';
+					txbuf[1] = ((samples & 0xF0)  >> 4) + '0';
+					txbuf[2] = (samples & 0xF) + '0';
+					txbuf[3] = '\n';
+					txstate = 0;
+					symbc = 0;
+				} else	if(read != write) {
 					txstate = print(buf[read], txbuf);
 					read = (read + 1) % RSSI_BUFSIZE;
 					symbc++;

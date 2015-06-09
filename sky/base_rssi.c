@@ -67,21 +67,63 @@ static uint8_t buf[RSSI_BUFSIZE];
 static struct ringbuf rbuf;
 static struct rtimer rtimer;
 static rtimer_clock_t nextt;
-static rtimer_clock_t delta = 0;
-static int curv = 0;
-static int ctr = 0;
+static uint8_t curv = 0;
+static uint16_t ctr = 0;
+static struct {
+	uint8_t valid;
+	uint8_t above;
+	uint8_t below;
+
+} backlog;
+
 
 static void samp(struct rtimer *t, void *ptr);
 
+#if 1
+static uint8_t bitCount (uint8_t value) {
+    unsigned int count = 0;
+    while (value > 0) {           // until all bits are zero
+        if ((value & 1) == 1)     // check lower bit
+            count++;
+        value >>= 1;              // shift bits, removing lower bit
+    }
+    return count;
+}
+#else
+static uint8_t bitCount (uint8_t value) {
+    uint8_t count = 0;
+    uint8_t pos = 0;
+    for(pos= 0; pos < 8; pos++){
+    	if(1 << pos | value) count++;
+    }
+    return count;
+}
+#endif
 
-static void flush(void){
-	if(ringbuf_put(&rbuf, (uint8_t)curv) == 0){
-		//printf("PANIC");
+
+
+static void flush(int changed){
+	if(ctr > 0xFF){
+		if(ringbuf_put(&rbuf, curv) == 0){
+			printf("PANIC");
+		}
+		if(ringbuf_put(&rbuf, 0xFF) == 0){
+			printf("PANIC");
+		}
+		ctr -= 0xFF;
 	}
-	if(ringbuf_put(&rbuf, (uint8_t)ctr) == 0){
-		//printf("PANIC");
+
+	if(changed){
+
+		if(ringbuf_put(&rbuf, curv) == 0){
+			printf("PANIC");
+		}
+		if(ringbuf_put(&rbuf, ctr) == 0){
+			printf("PANIC");
+		}
+
+		ctr = 0;
 	}
-	ctr = 1;
 }
 
 static void lost(int why){
@@ -91,7 +133,7 @@ static void lost(int why){
 			ctr++;
 			return;
 		}
-		flush();
+		flush(1);
 		curv = why;
 	}  else {
 		ctr ++;
@@ -100,19 +142,17 @@ static void lost(int why){
 
 static void resched(void){
 	nextt += Period;
+
 	while(RTIMER_CLOCK_LT(nextt, RTIMER_NOW() + MINSLACK )){
 		lost(2);
-		while(1);
 		nextt += Period;
 	}
+
 	rtimer_set(&rtimer, nextt, 1, samp, NULL);
-	LEDOFF(LEDS_RED);
 }
 
 static void samp(struct rtimer *t, void *ptr) {
 	static int block = 0;
-
-	LEDON(LEDS_RED);
 
 	int free = RSSI_BUFSIZE - ringbuf_elements(&rbuf);
 	if(free <= 4 || block  ){
@@ -122,23 +162,49 @@ static void samp(struct rtimer *t, void *ptr) {
 		resched();
 		return;
 	}
-	LEDON(LEDS_BLUE);
-	int8_t v = cc2420_rssi() + 128;
-	LEDOFF(LEDS_BLUE);
+	uint8_t v = cc2420_rssi() + 128;
 
-	if(v >= curv -1 && v <= curv +1){
+	backlog.valid <<= 1;
+	backlog.above <<= 1;
+	backlog.below <<= 1;
 
-		if(ctr == 0xFF){//todo chanGE
-			flush();
-		} else {
-			ctr++;
-		}
-	} else {
-		flush();
-		curv = v;
+	switch(v - curv){
+		case 1:
+			backlog.above |= 1;
+			backlog.valid |= 1;
+			break;
+		case 0:
+			backlog.valid |= 1;
+			break;
+		case -1:
+			backlog.below |= 1;
+			backlog.valid |= 1;
+			break;
 	}
+
+	if(! (backlog.valid & 1)){
+		ctr += bitCount(backlog.valid);
+		flush(1);
+		curv = v;
+		backlog.valid = 1;
+	} else if (backlog.valid == 0xFF) {
+		ctr++;
+		if(backlog.below == 0 && bitCount(backlog.above) > 4){
+			flush(1);
+			backlog.below = ~backlog.above;
+			backlog.above = 0;
+			curv += 1;
+		} else if(backlog.above == 0 && bitCount(backlog.below) > 4){
+			flush(1);
+			backlog.above  = ~backlog.below;
+			backlog.below = 0;
+			curv -= 1;
+		} else {
+			flush(0);
+		}
+	}
+
 	resched();
-	delta = nextt - RTIMER_NOW();
 }
 
 
@@ -179,6 +245,7 @@ AUTOSTART_PROCESSES(&scanner_process);
 PROCESS_THREAD(scanner_process, ev, data)
 {
   static struct etimer bet;
+  static rtimer_clock_t lastp;
 
   PROCESS_BEGIN();
   	  lpm_off();
@@ -199,11 +266,18 @@ PROCESS_THREAD(scanner_process, ev, data)
 			//Wait until ther is some data and also
 			do{
 				PROCESS_PAUSE();
+				if(RTIMER_NOW() - lastp >  RTIMER_ARCH_SECOND ){
+					printf("PANIC!!! No DATA\n");
+				}
 			} while(ringbuf_elements(&rbuf) < 2);
 			LEDON(LEDS_GREEN);
+
+
+			lastp = RTIMER_NOW();
+
 			putchar('R');
-			int ctr = 0;
-			while(ringbuf_elements(&rbuf) > 1 && ctr < 30){
+			int octr = 0;
+			while(ringbuf_elements(&rbuf) > 1 && octr < 30){
 
 #if 0
 				int t;
@@ -213,7 +287,7 @@ PROCESS_THREAD(scanner_process, ev, data)
 				hexprint(ringbuf_get(&rbuf));
 				hexprint(ringbuf_get(&rbuf));
 #endif
-				ctr++;
+				octr++;
 			}
 			putchar('\n');
 			LEDOFF(LEDS_GREEN);

@@ -12,9 +12,13 @@ import scopt.mutable.OptionParser
 import scopt.mutable.OptionParser._
 import java.util.Date
 import java.io.PrintWriter
+import java.io.File
 
 object Log2RealSim {
 
+	val SkyRSSIOffset = -45
+	
+	
 	val last = HashMap[Tuple2[Int, Int], Long]()
 	val dup = HashMap[Int, List[String]]()
 	
@@ -35,8 +39,16 @@ object Log2RealSim {
 	var endDate:Long = 0
 	val addnode =  scala.collection.mutable.Set[Int]()
 	
+	var ignore = List[Int]()
+	val nodeStats = HashMap[Int, Int]()
+	
 	def idToString(id:Int) = ("%d.%d").format( id%0x100, id / 0x100 )
 	
+	def wisebedIdToInt(s:String) = {
+		//urn:local:0x0014
+		val subs = s.drop(s.length - 4)
+		java.lang.Integer.parseInt(subs,16)
+	}
 
 	
 	def parseLine(l:String) {
@@ -50,12 +62,13 @@ object Log2RealSim {
 		var numb:List[Int] = null
 		var d:Date = null
 		val el = {
-			val filter=List("bRSSI:", "R:", "RE:", "DIS:","RE2:", "DIS2:", "BC:")
+			//val filter=List("bRSSI:", "R:", "RE:", "DIS:","RE2:", "DIS2:", "BC:")
 			val s = l.split(" ").toList
-			val cmd =filter.find(s(1).endsWith(_)) 
-			if(cmd.isDefined) {
-				val s2=s(1).splitAt(s(1).length - cmd.get.length)
-				s(0) :: s2._1.dropRight(1) :: s2._2 :: s.tail.tail
+			val s2 = s(1).split(":",4).toList
+			if(s2.length > 3 && s2(2).startsWith("0x")) {
+				val rv = s(0) :: s2.take(3).mkString(":") :: s2.drop(3).mkString(":") :: s.tail.tail
+				//println(rv.mkString(" "))
+				rv
 			} else  {
 				s
 			}
@@ -114,6 +127,7 @@ object Log2RealSim {
 		endDate = d.getTime
 		val rsTime = d.getTime - startDate; 
 		
+		val wisebedID = wisebedIdToInt(el(1))
 		
 		
 		def isT(suf:String*):Boolean = {
@@ -128,12 +142,20 @@ object Log2RealSim {
 					println("Failed to pase " + l )
 					return
 			}
+			if(numb.length == 5) {
+				numb = wisebedID :: numb
+			}
+			
+			if(ignore.contains(numb(0))) return
+			nodeStats.update(numb(0), nodeStats.getOrElse(numb(0), 0) + 1)
+			
 			val nd = idToString(numb(0))
-			val min = numb(1).toInt
-			val max = numb(2).toInt
+			val min = numb(1).toInt + SkyRSSIOffset
+			val max = numb(2).toInt + SkyRSSIOffset
 			val sum = numb(3).toInt
 			val ctr = numb(4).toInt
-			rsOut.println("%d;setbaserssi;%s;%d".format(rsTime, nd, (sum.toFloat/ctr).round.toInt))
+			val avg = (sum.toFloat/ctr).round.toInt + SkyRSSIOffset
+			rsOut.println("%d;baserssi;%s;%d".format(rsTime, nd, avg))
 			rssiOut.println(List(dp.format(d), nd, min, max, sum, ctr).mkString(" "))
 			cout += 1
 			return
@@ -186,9 +208,9 @@ object Log2RealSim {
 				if(v > 128) v -= 255
 				//Offset
 				rssi = v - 45
-			} else {
-				rssi = numb(3) - 45
-			}
+			} 
+			rssi = numb(3) - 45
+			
 			lqi = numb(4);
 			rcv = numb(5);
 			loss = numb(6);	
@@ -199,7 +221,7 @@ object Log2RealSim {
 		} else return
 		
 		if(src == 0 ||dst == 0) return		
-
+		if(ignore.contains(src) || ignore.contains(dst)) return
 		
 		//Check for dups by broken liner
 		dup.get(numb(0)) match{
@@ -213,7 +235,10 @@ object Log2RealSim {
 			case None =>
 		}
 		
-
+		//Stats:
+		List(src, dst).foreach(x => nodeStats.update(x, nodeStats.getOrElse(x, 0) + 1))
+		
+		
 		//Add Nodes
 		if(addnode.add(src)){ rsOut.println("0;addnode;" + idToString(src)) ; cout+=1} 
 		if(addnode.add(dst)){ rsOut.println("0;addnode;" + idToString(dst)); cout +=1}
@@ -277,6 +302,17 @@ object Log2RealSim {
 		connOut.println(List("time", "dst", "src", "rssi", "lqi", "rcv", "loss").mkString(" "))
 		rssiOut.println(List("time", "node", "min", "max", "sum", "count").mkString(" "))
 		
+		val ignoreFile = new File(infile + ".ignore")
+		if(ignoreFile.exists) {
+			println("Reading Ingnorefile : " + infile + ".ignore")
+			val igf = new BufferedReader(new FileReader(ignoreFile))
+			val igfIt = Iterator.continually(igf.readLine()).takeWhile(_ != null)
+			for(l <- igfIt) {
+				ignore = l.toInt :: ignore
+			}
+		}
+		
+		
 		
 		val lIt = Iterator.continually(br.readLine()).takeWhile(_ != null)
 		//                            2013-02-05T18:19:09 
@@ -296,6 +332,12 @@ object Log2RealSim {
 		println("Removed dups: " + rem)
 		println("Start:        " + dp.format(new Date(startDate)) )
 		println("End:          " + dp.format(new Date(endDate)) )
+		println("Nodestats:")
+		
+		for((x,y) <- nodeStats.toSeq.sortBy(_._1)) { println("%5d: ".format(x) + y)}
+		if(nodeStats.values.exists(_ < 5)) {
+			println("There are nodes that showed up seldom. This might be bogus data. You can ignore them by adding them to \"" + infile + ".ignore\".")
+		}
 		println
 		
 	
