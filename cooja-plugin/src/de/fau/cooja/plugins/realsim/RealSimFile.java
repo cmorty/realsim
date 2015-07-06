@@ -62,7 +62,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 	JComboBox<Object> default_node;
 	JButton load = new JButton("Import");
 	Cooja cooja;
-	JCheckBox loadFile = new JCheckBox("Load from File instead of Simulation");
+	JCheckBox loadFile = new JCheckBox("Load from file instead of simulation");
 	JTextPane logOutput = new JTextPane();
 	JTextPaneAppender taa = new JTextPaneAppender(logOutput);
 	JButton clear = new JButton("Clear Log");
