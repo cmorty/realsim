@@ -287,7 +287,7 @@ public class RealSimFile extends VisPlugin implements ActionListener {
 				String exreason = null;
 				int exind = 0;
 				try {
-					if(t[0].toLowerCase().equals("motetype")) {
+					if(t[0].toLowerCase().equals("motetype") || t[0].toLowerCase().equals("nodetype")) {
 						if(t.length == 2) {
 							defMoteType = t[1];
 							logger.info("Setting default mote type to: " + defMoteType);
