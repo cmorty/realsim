@@ -106,6 +106,17 @@ now(void)
 
 #define SHORTRANGE 10
 #define BITRANGE 10
+#define TWOBRANGE 10
+#define TWOBRANGEOFF (('z' - '!')/2)
+
+#if TWOBRANGE > SHORTRANGE
+#error FIXME
+#endif
+
+#if 2 * SHORTRANGE + 2 * BITRANGE + TWOBRANGE + 'A' > 'z'
+#error Out of range
+#endif
+
 
 
 static uint16_t buf[RSSI_BUFSIZE];
@@ -120,11 +131,12 @@ static uint8_t print(uint16_t prn, char * buf) {
 	int16_t c = prn >> 8;
 
 	int8_t diff = v - lastp;
-	uint8_t full = 1;
+	uint8_t rv = 0;
 
 
 
 	char off = 0;
+	char dat = 0;
 	if(diff != 0){
 		// +-1 first
 		off = 'A';
@@ -132,37 +144,50 @@ static uint8_t print(uint16_t prn, char * buf) {
 		//Negativ diff
 		if(c == 1 && diff < 0 && diff > -(BITRANGE + 1)){
 			off += -diff - 1;
-			full = 0;
+			rv = 1;
 		}
 
 		//Postitive diff
-		if(c == 1 && diff > 0 && diff <  (BITRANGE + 1)){
+		else if(c == 1 && diff > 0 && diff <  (BITRANGE + 1)){
 			off += BITRANGE;
 			off += diff - 1;
-			full = 0;
+			rv = 1;
 		}
 
 		//One-Offset neg
-		if(diff == -1 && c != 1 && c < SHORTRANGE + 2){
+		else if(diff == -1 && c != 1 && c < SHORTRANGE + 2){
 			off += 2 * BITRANGE;
 			off += c - 2;
-			full = 0;
+			rv = 1;
 		}
 
 		//One-Offset pst
-		if(diff == +1 && c != 1 && c < SHORTRANGE + 1){
+		else if(diff == +1 && c != 1 && c < SHORTRANGE + 2){
 			off += 2 * BITRANGE + SHORTRANGE;
 			off += c - 2;
-			full = 0;
+			rv = 1;
 		}
 
+		//Some more range - Two-Byte
+		else if(c < TWOBRANGE + 1 && diff >= -TWOBRANGEOFF && diff <= TWOBRANGEOFF) {
+			off += 2 * BITRANGE + 2 * SHORTRANGE;
+			off += c - 1;
+			dat = '!' + diff + TWOBRANGEOFF;
+			rv = 2;
+		}
 
 	}
 	lastp = v;
 
-	if(!full){
+	if(rv == 1){
 		buf[3] = off;
 		return 3;
+	}
+
+	if(rv == 2) {
+		buf[2] = off;
+		buf[3] = dat;
+		return 2;
 	}
 
 #if 0
@@ -267,7 +292,7 @@ PROCESS_THREAD(scanner_process, ev, data) {
 
 			}
 
-			v = ((signed char) getreg(CC2420_RSSI)) + 128;
+			v = (uint8_t)((int16_t)((int8_t) getreg(CC2420_RSSI)) + 128);
 		}
 
 
@@ -282,6 +307,8 @@ PROCESS_THREAD(scanner_process, ev, data) {
 			if(t == read){
 				//Buffer full - Set to 1. Will retry next time
 				v = 1;
+				//Count if buffer was full last time - this did not happen before
+				if(last == v) ctr++;
 			} else {
 				write = t;
 				if(changed){
