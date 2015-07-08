@@ -1,4 +1,4 @@
-package de.fau.realsim
+package de.fau.realsim.rleDecoder
 import scala.language.implicitConversions
 
 

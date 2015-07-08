@@ -1,6 +1,6 @@
 // From http://stackoverflow.com/questions/5805496/arithmetic-expression-grammar-and-parser
 
-package de.fau.realsim
+package de.fau.realsim.helper
 
 
 import scala.math._
