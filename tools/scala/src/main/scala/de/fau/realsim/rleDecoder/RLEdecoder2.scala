@@ -1,14 +1,18 @@
-package de.fau.realsim
+package de.fau.realsim.rleDecoder
 
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
 import java.util.concurrent.TimeUnit.NANOSECONDS
-import scala.collection.mutable.Buffer
-import scala.language.implicitConversions
-import scopt.OptionParser
-import org.reflections.Reflections
+
+import scala.collection.JavaConversions.asScalaSet
 import scala.collection.mutable.ArrayBuffer
+import scala.language.implicitConversions
+
+import org.reflections.Reflections
+
+import de.fau.realsim.helper.FormulaParser
+import scopt.OptionParser
 
 
 

@@ -1,20 +1,21 @@
 package de.fau.realsim.rleDecoder
-import scala.language.implicitConversions
+
 import java.io.BufferedReader
-import java.io.PrintWriter
+import java.io.File
+import java.io.FileOutputStream
 import java.io.FileReader
 import java.io.FileWriter
-import scopt.OptionParser
-import scopt.OptionParser._
-import java.io.File
-import scala.collection.mutable.UnrolledBuffer
-import scala.collection.mutable.HashMap
-import java.io.FileOutputStream
-import java.util.zip.GZIPOutputStream
-import scala.collection.convert.Wrappers.ToIteratorWrapper
+import java.io.PrintWriter
 import java.util.concurrent.TimeUnit.NANOSECONDS
+import java.util.zip.GZIPOutputStream
 
-import Data._
+import scala.collection.mutable.UnrolledBuffer
+import scala.language.implicitConversions
+
+import Data.dataToInt
+import Data.intToData
+import de.fau.realsim.helper.FormulaParser
+import scopt.OptionParser
 
 object RLEdecoder {
 
