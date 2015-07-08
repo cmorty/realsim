@@ -35,6 +35,10 @@
 static uint16_t beacontimer[BEACONS_PER_PERIODE];
 static uint8_t beacontimerpos = BEACONS_PER_PERIODE;
 
+#if 256%BEACONS_PER_PERIODE != 0
+#error 256 must be devidable by BEACONS_PER_PERIODE
+#endif
+
 
 #define MAX_NEIGHBORS 50
 
