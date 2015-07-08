@@ -14,7 +14,7 @@
 struct neighbor {
 	struct neighbor *next;
 	unsigned long last_seen;
-	unsigned long last_sent;
+	//unsigned long last_sent;
 	linkaddr_t addr;
 	uint16_t last_seqno;
 	uint8_t recv_count;
