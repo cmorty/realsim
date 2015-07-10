@@ -135,6 +135,11 @@ class Edge {
 	
 	static DecimalFormat fm = new DecimalFormat("0.00"); 
 	
+	
+	private double rssi2d(double rssi) {
+		return Math.pow(10d, (-rssi) / (10 * 2)) / 100;
+	}
+	
 	public double len(GraphPanel.Elength el) {
 		double orssi = rssi_min;
 		double olqi = lqi_min;
@@ -146,9 +151,9 @@ class Edge {
 		}
 		switch (el) {
 			case RSSI:
-				return (100*100)/(-(rssi + orssi) / 2);
+				return rssi2d ((rssi + orssi)/ 2);
 			case RSSI_min:
-				return (100*100)/(-Math.max(rssi, orssi));
+				return rssi2d(Math.max(rssi, orssi));
 			case LQI:
 				return (100*100)/((lqi + olqi) / 2);
 			case LQI_min:
@@ -474,6 +479,7 @@ class GraphPanel extends JPanel implements Runnable, MouseListener, MouseMotionL
 			double len = Math.sqrt(vx * vx + vy * vy);
 			len = (len == 0) ? .0001 : len;
 			double f = (e.len(view) * scale / 10  - len) / (len * 3);
+			System.out.println("LEn: " + e.len(view));
 			double dx = f * vx;
 			double dy = f * vy;
 			// I-Regler
